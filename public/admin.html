@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Správa · Household Hero</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="wrap" id="root"></div>
+<script src="/app.js"></script>
+<script>
+const root = document.getElementById("root");
+const ROLE = { parent: "Rodič", child: "Dítě" };
+const { esc } = hh;
+let ME = null, D = null, SECRET = null;
+
+async function load() {
+  const [me, ov] = await Promise.all([hh.api("/api/auth/me"), hh.api("/api/admin/overview")]);
+  ME = me.user; D = ov; render();
+}
+
+function famCard(f) {
+  const free = D.users.filter((u) => !f.members.some((m) => m.userId === u.id));
+  return '<article class="fam"><div class="fam-h"><h3>' + esc(f.name) + "</h3>" +
+    '<button class="btn danger sm" data-act="delfam" data-id="' + f.id + '" data-name="' + esc(f.name) + '"' + (f.members.length ? ' disabled title="Nejdřív odpoj členy"' : "") + ">Smazat rodinu</button></div>" +
+    '<ul class="members">' +
+    (f.members.length ? f.members.map((m) =>
+      '<li><span class="tag ' + m.role + '">' + ROLE[m.role] + "</span><b>" + esc(m.displayName) + '</b><span class="cap">@' + esc(m.username) + '</span><span class="sp"></span>' +
+      '<button class="x" data-act="unlink" data-f="' + f.id + '" data-u="' + m.userId + '" data-name="' + esc(m.displayName) + '" data-fname="' + esc(f.name) + '" aria-label="Odpojit ' + esc(m.displayName) + '">×</button></li>'
+    ).join("") : '<li class="cap">Zatím bez členů</li>') + "</ul>" +
+    '<form class="inline addm" data-f="' + f.id + '">' +
+    '<div class="field"><label>Připojit uživatele</label><select name="userId" required><option value="">Vyber…</option>' +
+    free.map((u) => '<option value="' + u.id + '">' + esc(u.displayName) + " (@" + esc(u.username) + ")</option>").join("") + "</select></div>" +
+    '<div class="field" style="flex:0 1 140px"><label>Role</label><select name="role"><option value="parent">Rodič</option><option value="child">Dítě</option></select></div>' +
+    '<button class="btn sm" type="submit"' + (free.length ? "" : " disabled") + ">Připojit</button></form></article>";
+}
+
+function userRow(u) {
+  const famName = (id) => (D.families.find((f) => f.id === id) || {}).name || "?";
+  const tags = (u.isSuperadmin ? '<span class="tag super">Superadmin</span>' : "") +
+    u.families.map((x) => '<span class="tag ' + x.role + '">' + esc(famName(x.familyId)) + " · " + ROLE[x.role] + "</span>").join("");
+  return "<tr><td><b>" + esc(u.displayName) + '</b><br><span class="cap">@' + esc(u.username) +
+    (u.mustChangePassword ? " · čeká na změnu hesla" : "") + "</span></td>" +
+    '<td><div class="chips">' + (tags || '<span class="cap">Bez rodiny</span>') + "</div></td>" +
+    "<td>" + (u.disabled ? '<span class="tag off">Zakázaný</span>' : '<span class="tag">Aktivní</span>') + "</td>" +
+    '<td><div class="acts"><button class="btn ghost sm" data-act="reset" data-id="' + u.id + '" data-name="' + esc(u.displayName) + '" data-user="' + esc(u.username) + '">Nové heslo</button>' +
+    (u.id === ME.id ? "" : '<button class="btn ghost sm" data-act="toggle" data-id="' + u.id + '" data-off="' + (u.disabled ? "0" : "1") + '" data-name="' + esc(u.displayName) + '">' + (u.disabled ? "Povolit" : "Zakázat") + "</button>") +
+    "</div></td></tr>";
+}
+
+function render() {
+  root.innerHTML =
+    hh.header(ME, "admin") +
+    (SECRET ? '<section class="secret" role="status"><b>Dočasné heslo pro ' + esc(SECRET.name) + " (@" + esc(SECRET.username) + ")</b>" +
+      '<div class="pw">' + esc(SECRET.password) + "</div>" +
+      '<p class="cap">Předej ho osobně. Zobrazí se jen teď a při prvním přihlášení si ho uživatel změní.</p>' +
+      '<div class="inline"><button class="btn sm" data-act="copy">Kopírovat</button><button class="btn ghost sm" data-act="hidesecret">Skrýt</button></div></section>' : "") +
+    '<section class="panel"><h2>Rodiny</h2>' +
+    '<form id="f-family" class="inline"><div class="field"><label for="fname">Nová rodina</label><input id="fname" type="text" maxlength="60" placeholder="např. Novákovi" required></div><button class="btn" type="submit">Přidat rodinu</button></form>' +
+    (D.families.map(famCard).join("") || '<p class="cap">Zatím žádná rodina.</p>') + "</section>" +
+    '<section class="panel"><h2>Nový uživatel</h2><form id="f-user" class="sub">' +
+    '<div class="row2"><div class="field"><label for="dn">Jméno</label><input id="dn" type="text" maxlength="60" required></div>' +
+    '<div class="field"><label for="un">Uživatelské jméno</label><input id="un" type="text" maxlength="32" autocapitalize="none" spellcheck="false" pattern="[A-Za-z0-9._\\-]{3,32}" title="3–32 znaků: a–z, čísla, tečka, pomlčka, podtržítko" required></div></div>' +
+    '<div class="field"><label for="pw">Dočasné heslo</label><div class="inline"><input id="pw" type="text" minlength="8" maxlength="200" style="flex:1 1 200px" required><button class="btn ghost sm" type="button" data-act="gen">Vygenerovat</button></div></div>' +
+    '<div class="row2"><div class="field"><label for="fam">Rodina (nepovinné)</label><select id="fam"><option value="">Bez rodiny</option>' +
+    D.families.map((f) => '<option value="' + f.id + '">' + esc(f.name) + "</option>").join("") + "</select></div>" +
+    '<div class="field"><label for="role">Role v rodině</label><select id="role"><option value="parent">Rodič</option><option value="child">Dítě</option></select></div></div>' +
+    '<label class="check"><input id="sa" type="checkbox"> Superadmin (spravuje uživatele a rodiny)</label>' +
+    '<button class="btn" type="submit" style="justify-self:start">Vytvořit uživatele</button></form></section>' +
+    '<section class="panel"><h2>Uživatelé</h2><div class="tablewrap"><table><thead><tr><th>Jméno</th><th>Rodiny</th><th>Stav</th><th>Akce</th></tr></thead><tbody>' +
+    D.users.map(userRow).join("") + "</tbody></table></div></section>";
+}
+
+async function run(fn, ok) {
+  try { await fn(); if (ok) hh.toast(ok); await load(); } catch (e) { hh.toast(e.message, true); }
+}
+
+document.addEventListener("submit", (e) => {
+  e.preventDefault();
+  const f = e.target;
+  if (f.id === "f-family") {
+    run(() => hh.api("/api/admin/families", { method: "POST", body: { name: fname.value } }), "Rodina vytvořena");
+  } else if (f.id === "f-user") {
+    const name = dn.value, user = un.value.toLowerCase(), pass = pw.value;
+    run(async () => {
+      await hh.api("/api/admin/users", { method: "POST", body: {
+        displayName: name, username: user, password: pass, isSuperadmin: sa.checked,
+        familyId: fam.value || undefined, role: fam.value ? role.value : undefined } });
+      SECRET = { name, username: user, password: pass };
+    }, "Uživatel vytvořen");
+  } else if (f.classList.contains("addm")) {
+    const fd = new FormData(f);
+    run(() => hh.api("/api/admin/families/" + f.dataset.f + "/members", { method: "POST", body: { userId: fd.get("userId"), role: fd.get("role") } }), "Připojeno");
+  }
+});
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-act]");
+  if (!b) return;
+  const a = b.dataset.act, d = b.dataset;
+  if (a === "gen") { pw.value = hh.genPassword(); }
+  else if (a === "hidesecret") { SECRET = null; render(); }
+  else if (a === "copy") { navigator.clipboard.writeText(SECRET.password).then(() => hh.toast("Zkopírováno"), () => hh.toast("Kopírování se nepovedlo, označ heslo ručně", true)); }
+  else if (a === "delfam") { if (confirm("Smazat rodinu „" + d.name + "“?")) run(() => hh.api("/api/admin/families/" + d.id, { method: "DELETE" }), "Rodina smazána"); }
+  else if (a === "unlink") { if (confirm("Odpojit " + d.name + " z rodiny „" + d.fname + "“?")) run(() => hh.api("/api/admin/families/" + d.f + "/members/" + d.u, { method: "DELETE" }), "Odpojeno"); }
+  else if (a === "reset") {
+    if (!confirm("Nastavit " + d.name + " nové dočasné heslo? Stará přihlášení se ukončí.")) return;
+    const pass = hh.genPassword();
+    run(async () => { await hh.api("/api/admin/users/" + d.id, { method: "PATCH", body: { password: pass } }); SECRET = { name: d.name, username: d.user, password: pass }; }, "Heslo změněno");
+  }
+  else if (a === "toggle") {
+    const off = d.off === "1";
+    if (!off || confirm("Zakázat účet " + d.name + "? Bude odhlášen.")) run(() => hh.api("/api/admin/users/" + d.id, { method: "PATCH", body: { disabled: off } }), off ? "Účet zakázán" : "Účet povolen");
+  }
+});
+
+load().catch((e) => { if (e.status === 401) location.href = "/"; else root.textContent = e.message; });
+</script>
+</body>
+</html>

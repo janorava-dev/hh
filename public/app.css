@@ -1,0 +1,100 @@
+:root{
+  --bg:#E6EEF7; --surface:#FFFFFF; --surface-2:#F0F5FB; --ink:#13203A; --ink-2:#4A5C7C; --line:#CBD8E8;
+  --outline:#13203A; --pop:#13203A;
+  --accent:#2F5BEA; --accent-ink:#FFFFFF;
+  --gold:#F5B300; --gold-soft:#FFF0C0;
+  --ok:#0E9F78; --ok-soft:#D8F5EC;
+  --bad:#E23B4A; --bad-soft:#FDE3E5;
+  --shadow:4px 4px 0 var(--pop);
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1526; --surface:#16233D; --surface-2:#1D2D4C; --ink:#EAF0FB; --ink-2:#9DB0D0; --line:#2B3E62;
+    --outline:#3A4F7C; --pop:#050A14;
+    --accent:#6C8CFF; --accent-ink:#0D1526;
+    --gold:#FFC93C; --gold-soft:#3A3011;
+    --ok:#3DD9A8; --ok-soft:#123A33;
+    --bad:#FF6673; --bad-soft:#40202A;
+    color-scheme:dark;
+  }
+}
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:600 15px/1.45 'Nunito','Trebuchet MS',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3,.disp{font-family:'Lilita One','Trebuchet MS',system-ui,sans-serif;font-weight:400;letter-spacing:.2px;margin:0;text-wrap:balance}
+h1{font-size:30px} h2{font-size:24px} h3{font-size:20px}
+p{margin:0}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+code{font:700 13px ui-monospace,Consolas,monospace;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.cap{font-size:13px;color:var(--ink-2);font-weight:700}
+.eyebrow{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+
+.wrap{max-width:960px;margin:0 auto;padding:16px 16px 64px;display:grid;gap:18px;align-content:start}
+.wrap.narrow{max-width:440px;padding-top:8vh}
+
+/* horní lišta */
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px 18px}
+.mark{display:flex;align-items:center;gap:8px;font-size:21px;line-height:1}
+.mark svg{width:26px;height:30px}
+.mark.lg{font-size:28px}.mark.lg svg{width:34px;height:40px}
+.nav{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.nav a,.nav button{display:inline-flex;align-items:center;height:38px;padding:0 12px;border:2px solid var(--line);border-radius:12px;background:var(--surface);font-weight:800;font-size:14px;text-decoration:none;color:var(--ink)}
+.nav a[aria-current="page"]{background:var(--accent);border-color:var(--outline);color:var(--accent-ink)}
+.nav .who{border:0;background:none;color:var(--ink-2);padding:0 4px}
+
+/* plochy */
+.panel{background:var(--surface);border:2.5px solid var(--outline);border-radius:20px;box-shadow:var(--shadow);padding:18px;display:grid;gap:14px}
+.sub{display:grid;gap:10px;background:var(--surface-2);border:2px solid var(--line);border-radius:16px;padding:14px}
+.soon{opacity:.75;border-style:dashed}
+
+/* formuláře */
+.field{display:grid;gap:5px}
+.field label{font-size:13px;font-weight:800;color:var(--ink-2)}
+input[type=text],input[type=password],select{width:100%;height:44px;padding:0 12px;border:2px solid var(--line);border-radius:12px;background:var(--surface);font-weight:700}
+input:focus,select:focus{border-color:var(--accent)}
+.row2{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.inline{display:flex;flex-wrap:wrap;gap:8px;align-items:flex-end}
+.inline .field{flex:1 1 180px}
+.inline .btn.sm{min-height:44px}
+.check{display:flex;align-items:center;gap:8px;font-weight:800}
+.check input{width:20px;height:20px;accent-color:var(--accent)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:44px;border:2.5px solid var(--outline);background:var(--accent);color:var(--accent-ink);border-radius:12px;padding:8px 16px;font-weight:800;box-shadow:3px 3px 0 var(--pop);white-space:nowrap}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--pop)}
+.btn.ghost{background:var(--surface);color:var(--ink)}
+.btn.sm{min-height:36px;padding:5px 11px;font-size:13px}
+.btn.danger{background:var(--bad-soft);color:var(--bad);border-color:var(--bad);box-shadow:none}
+.btn:disabled{opacity:.45;cursor:not-allowed;box-shadow:none}
+.err{color:var(--bad);font-weight:800;min-height:1.4em}
+
+/* štítky a členové */
+.tag{display:inline-flex;align-items:center;padding:3px 9px;border-radius:99px;font-size:12px;font-weight:800;border:2px solid var(--line);background:var(--surface-2);white-space:nowrap}
+.tag.parent{background:var(--gold-soft);border-color:var(--gold)}
+.tag.child{background:var(--ok-soft);border-color:var(--ok)}
+.tag.super{background:var(--accent);color:var(--accent-ink);border-color:var(--outline)}
+.tag.off{background:var(--bad-soft);border-color:var(--bad);color:var(--bad)}
+.fam{display:grid;gap:10px;background:var(--surface-2);border:2px solid var(--line);border-radius:16px;padding:14px}
+.fam-h{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:8px}
+.members{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.members li{display:flex;align-items:center;gap:8px;background:var(--surface);border:2px solid var(--line);border-radius:12px;padding:6px 8px 6px 10px;min-height:44px}
+.members li .sp{flex:1}
+.x{width:34px;height:34px;border-radius:10px;border:2px solid var(--line);background:var(--surface);display:grid;place-items:center;padding:0;font-size:18px;line-height:1;color:var(--ink-2)}
+.x:hover{border-color:var(--bad);color:var(--bad)}
+
+/* tabulka uživatelů */
+.tablewrap{overflow-x:auto;border:2px solid var(--line);border-radius:14px;background:var(--surface)}
+table{width:100%;border-collapse:collapse;min-width:640px}
+th{font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2);text-align:left;padding:10px 12px;background:var(--surface-2)}
+td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:middle}
+td .acts{display:flex;flex-wrap:wrap;gap:6px}
+.chips{display:flex;flex-wrap:wrap;gap:5px}
+
+/* hlášky */
+.secret{display:grid;gap:8px;border:2.5px solid var(--gold);background:var(--gold-soft);border-radius:18px;padding:14px}
+.secret .pw{font:800 20px ui-monospace,Consolas,monospace;letter-spacing:.06em;background:var(--surface);border:2px dashed var(--outline);border-radius:12px;padding:8px 12px;justify-self:start;user-select:all}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translate(-50%,12px);max-width:min(440px,calc(100% - 32px));padding:11px 16px;border-radius:14px;background:var(--ink);color:var(--bg);font-weight:800;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:30}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+.toast.bad{background:var(--bad);color:#fff}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}

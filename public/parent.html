@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Rodič · Household Hero</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app.css">
+</head>
+<body>
+<div class="wrap" id="root"></div>
+<script src="/app.js"></script>
+<script>
+const root = document.getElementById("root");
+const ROLE = { parent: "Rodič", child: "Dítě" };
+
+(async function () {
+  let me;
+  try { me = (await hh.api("/api/auth/me")).user; } catch (e) { location.href = "/"; return; }
+  const mine = me.memberships.filter((m) => m.role === "parent");
+  const fams = await Promise.all(mine.map((m) => hh.api("/api/family/" + m.familyId)));
+
+  root.innerHTML =
+    hh.header(me, "parent") +
+    fams.map((f) =>
+      '<section class="panel"><div><div class="eyebrow">Rodina</div><h2>' + hh.esc(f.family.name) + "</h2></div>" +
+      '<ul class="members">' +
+      f.members.map((m) =>
+        '<li><span class="tag ' + m.role + '">' + ROLE[m.role] + "</span><b>" + hh.esc(m.displayName) + "</b></li>"
+      ).join("") + "</ul></section>"
+    ).join("") +
+    '<section class="panel soon"><h3>Schvalování misí a bonusů</h3><p class="cap">Připravujeme: fronta úkolů, které děti odeslaly, a schválení jedním klepnutím.</p></section>' +
+    '<section class="panel soon"><h3>Trhliny štítu</h3><p class="cap">Připravujeme: udělení trhliny s důvodem (max. 3 za den).</p></section>';
+})();
+</script>
+</body>
+</html>

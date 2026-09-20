@@ -4,18 +4,44 @@ Rodinná aplikace na domácí práce s gamifikací. Děti za úkoly získávají
 
 - **Web:** https://hh.oliv.cz
 - **Hosting:** Cloudflare Workers (statické soubory + API), databáze D1
-- **Pravidla:** [docs/pravidla.md](docs/pravidla.md)
+- **Pravidla hry:** [docs/pravidla.md](docs/pravidla.md)
+
+## Uživatelé a role
+
+| Role | Co smí |
+|---|---|
+| **Superadmin** | zakládá uživatele a rodiny, připojuje uživatele do rodin, resetuje hesla, zakazuje účty |
+| **Rodič** | (v rodině) schvaluje mise, uděluje trhliny štítu, vidí členy rodiny |
+| **Dítě** | plní mise a bonusy, spravuje svého hrdinu |
+
+Superadmin je příznak na účtu, ne role v rodině – jeden člověk tedy může být superadmin i rodič. Dítě patří nejvýš do jedné rodiny.
+
+Účty se nezakládají samy. Superadmin vytvoří uživatele s dočasným heslem, které si uživatel při prvním přihlášení změní. Hesla se ukládají jako PBKDF2-SHA256, přihlášení je přes cookie (`HttpOnly`, `SameSite=Lax`), po 5 chybných pokusech se účet na 10 minut zamkne.
 
 ## Vývoj
 
 ```bash
 npm install
-npm run dev        # lokálně na http://localhost:8787
-npm run deploy     # nasazení na Cloudflare (vyžaduje wrangler login)
+npm run db:migrate                    # lokální databáze
+HH_PASSWORD='dev-heslo-123' npm run create-superadmin -- admin "Admin"   # lokální superadmin
+npm run dev                           # http://localhost:8787
+npm run test:smoke                    # v druhém terminálu, když běží dev server
+```
+
+## Nasazení (jednorázově)
+
+```bash
+npx wrangler login
+npx wrangler d1 create hh             # vypíše database_id -> vlož do wrangler.jsonc
+npm run db:migrate:remote
+npm run deploy
+npm run create-superadmin -- <jmeno> "<Jméno>" --remote   # zeptá se na heslo v terminálu
 ```
 
 ## Struktura
 
-- `public/` – frontend
-- `src/index.ts` – Worker (API pod `/api/*`)
+- `public/` – frontend (`index.html` přihlášení, `admin.html`, `parent.html`, `child.html`, `password.html`)
+- `src/` – Worker: `index.ts` (routování, ochrana stránek), `auth.ts` (hesla, relace), `admin.ts` (správa uživatelů a rodin)
+- `migrations/` – schéma databáze D1
+- `scripts/` – zakládání superadmina, smoke test
 - `wrangler.jsonc` – konfigurace Cloudflare
