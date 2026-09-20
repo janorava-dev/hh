@@ -24,6 +24,7 @@ class Client {
   }
 }
 
+const rnd = Math.random().toString(36).slice(2, 6), M = "maminka" + rnd, B = "blesk" + rnd;
 const anon = new Client();
 let r = await anon.req("GET", "/api/auth/me");
 check("me bez přihlášení = 401", r.status === 401, r.status);
@@ -51,13 +52,13 @@ check("vytvoření rodiny", r.status === 201 && fam1);
 r = await sa.req("POST", "/api/admin/families", { name: "Druzí" });
 const fam2 = r.data.id;
 
-r = await sa.req("POST", "/api/admin/users", { username: "maminka", displayName: "Maminka", password: "docasne-heslo1", familyId: fam1, role: "parent" });
+r = await sa.req("POST", "/api/admin/users", { username: M, displayName: "Maminka", password: "docasne-heslo1", familyId: fam1, role: "parent" });
 const parentId = r.data.id;
 check("vytvoření rodiče s rodinou", r.status === 201 && parentId, JSON.stringify(r.data));
-r = await sa.req("POST", "/api/admin/users", { username: "blesk", displayName: "Blesk", password: "docasne-heslo2", familyId: fam1, role: "child" });
+r = await sa.req("POST", "/api/admin/users", { username: B, displayName: "Blesk", password: "docasne-heslo2", familyId: fam1, role: "child" });
 const childId = r.data.id;
 check("vytvoření dítěte s rodinou", r.status === 201 && childId);
-r = await sa.req("POST", "/api/admin/users", { username: "MAMINKA", displayName: "Dup", password: "docasne-heslo1" });
+r = await sa.req("POST", "/api/admin/users", { username: M.toUpperCase(), displayName: "Dup", password: "docasne-heslo1" });
 check("duplicitní username = 409", r.status === 409, JSON.stringify(r.data));
 r = await sa.req("POST", "/api/admin/users", { username: "x y", displayName: "Bad", password: "docasne-heslo1" });
 check("špatné username = 400", r.status === 400);
@@ -79,7 +80,7 @@ check("superadmin nezakáže sám sebe", r.status === 400);
 
 // dítě: musí změnit heslo
 const kid = new Client();
-r = await kid.req("POST", "/api/auth/login", { username: "blesk", password: "docasne-heslo2" });
+r = await kid.req("POST", "/api/auth/login", { username: B, password: "docasne-heslo2" });
 check("login dítěte", r.status === 200 && r.data.user.mustChangePassword === true && r.data.user.memberships[0].role === "child", JSON.stringify(r.data));
 r = await kid.req("GET", "/api/admin/overview");
 check("dítě nesmí na admin API (403)", r.status === 403);
@@ -100,7 +101,7 @@ check("dítě vidí svou rodinu", r.status === 200 && r.data.members.length === 
 
 // rodič
 const par = new Client();
-await par.req("POST", "/api/auth/login", { username: "maminka", password: "docasne-heslo1" });
+await par.req("POST", "/api/auth/login", { username: M, password: "docasne-heslo1" });
 await par.req("POST", "/api/auth/password", { current: "docasne-heslo1", next: "maminka-nove-1" });
 r = await par.req("GET", "/parent");
 check("/parent pro rodiče = 200", r.status === 200);
@@ -124,15 +125,15 @@ r = await kid.req("GET", "/api/auth/me");
 check("po resetu je stará relace mrtvá", r.status === 401, r.status);
 r = await sa.req("PATCH", `/api/admin/users/${childId}`, { disabled: true });
 const kid2 = new Client();
-r = await kid2.req("POST", "/api/auth/login", { username: "blesk", password: "reset-heslo-999" });
+r = await kid2.req("POST", "/api/auth/login", { username: B, password: "reset-heslo-999" });
 check("zakázaný uživatel se nepřihlásí", r.status === 401);
 await sa.req("PATCH", `/api/admin/users/${childId}`, { disabled: false });
 
 // lockout
 const lk = new Client();
 let last;
-for (let i = 0; i < 5; i++) last = await lk.req("POST", "/api/auth/login", { username: "maminka", password: "spatne" + i });
-r = await lk.req("POST", "/api/auth/login", { username: "maminka", password: "maminka-nove-1" });
+for (let i = 0; i < 5; i++) last = await lk.req("POST", "/api/auth/login", { username: M, password: "spatne" + i });
+r = await lk.req("POST", "/api/auth/login", { username: M, password: "maminka-nove-1" });
 check("po 5 chybách je účet zamčený (429)", r.status === 429, r.status);
 
 // logout

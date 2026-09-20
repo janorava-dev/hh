@@ -16,7 +16,25 @@ export async function admin(req: Request, env: Env, url: URL, me: AuthUser): Pro
   if (path === "/families" && method === "POST") {
     const name = text((await readJson(req)).name, "název rodiny", 2, 60);
     const id = crypto.randomUUID();
-    await env.DB.prepare("INSERT INTO families (id, name) VALUES (?, ?)").bind(id, name).run();
+    await env.DB.batch([
+      env.DB.prepare("INSERT INTO families (id, name) VALUES (?, ?)").bind(id, name),
+      // výchozí bonusové úkoly, rodiče je pak upraví
+      ...(
+        [
+          ["Vynést koš", 5, 20],
+          ["Vyndat myčku", 10, 30],
+          ["Složit prádlo", 10, 30],
+        ] as const
+      ).map(([label, minutes, xp]) =>
+        env.DB.prepare("INSERT INTO chores (id, family_id, label, minutes, xp) VALUES (?, ?, ?, ?, ?)").bind(
+          crypto.randomUUID(),
+          id,
+          label,
+          minutes,
+          xp,
+        ),
+      ),
+    ]);
     return json({ id, name }, 201);
   }
 

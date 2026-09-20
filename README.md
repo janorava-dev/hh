@@ -25,7 +25,9 @@ npm install
 npm run db:migrate                    # lokální databáze
 HH_PASSWORD='dev-heslo-123' npm run create-superadmin -- admin "Admin"   # lokální superadmin
 npm run dev                           # http://localhost:8787
+echo ALLOW_TEST_DAY=1 > .dev.vars     # jen lokálně: testy smí přepsat den hlavičkou x-test-day
 npm run test:smoke                    # v druhém terminálu, když běží dev server
+npm run test:game                     # herní smyčka: mise, bonusy, trhliny, přenos minut
 ```
 
 ## Nasazení (jednorázově)
@@ -41,8 +43,8 @@ npm run create-superadmin -- <jmeno> "<Jméno>" --remote   # zeptá se na heslo 
 
 ## Struktura
 
-- `public/` – frontend (`index.html` přihlášení, `admin.html`, `parent.html`, `child.html`, `password.html`)
-- `src/` – Worker: `index.ts` (routování, ochrana stránek), `auth.ts` (hesla, relace), `admin.ts` (správa uživatelů a rodin)
+- `public/` – frontend (`index.html` přihlášení, `admin.html`, `parent.html`, `child.html`, `password.html`, sdílené `hero.js`, `app.js`, `app.css`)
+- `src/` – Worker: `index.ts` (routování, ochrana stránek), `auth.ts` (hesla, relace), `admin.ts` (správa uživatelů a rodin), `game.ts` (pravidla a výpočet minut), `child.ts` (API dítěte), `family.ts` (API rodiče)
 - `migrations/` – schéma databáze D1
 - `scripts/` – zakládání superadmina, smoke test
 - `wrangler.jsonc` – konfigurace Cloudflare

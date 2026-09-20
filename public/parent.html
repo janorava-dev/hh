@@ -9,32 +9,164 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="/app.css">
+<style>
+.q{display:grid;gap:10px}
+.qi{display:grid;gap:10px;background:var(--surface-2);border:2px solid var(--line);border-radius:16px;padding:14px}
+.qh{display:flex;flex-wrap:wrap;justify-content:space-between;align-items:baseline;gap:6px}
+.mchk{display:grid;gap:6px}
+.mi{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;padding:6px 12px;border:2px solid var(--ok);background:var(--ok-soft);border-radius:12px;font-weight:800;text-align:left}
+.mi.no{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.mi .ic{width:18px;height:18px}
+.kids{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:14px}
+.kc{display:grid;gap:10px;background:var(--surface-2);border:2px solid var(--line);border-radius:16px;padding:14px}
+.kh{display:grid;grid-template-columns:64px 1fr;gap:12px;align-items:center}
+.kh svg{width:64px;height:64px;border-radius:50%;border:2.5px solid var(--outline);background:var(--gold-soft)}
+.kh h3{font-size:22px}
+.stat{display:flex;flex-wrap:wrap;gap:6px}
+.pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:99px;border:2px solid var(--line);background:var(--surface);font-size:13px;font-weight:800}
+.pill.ok{border-color:var(--ok);background:var(--ok-soft)}
+.pill.warn{border-color:var(--gold);background:var(--gold-soft)}
+.pill.bad{border-color:var(--bad);background:var(--bad-soft);color:var(--bad)}
+.shs{display:flex;gap:4px;align-items:center}
+.chip{padding:8px 12px;border-radius:99px;border:2px solid var(--bad);background:var(--bad-soft);color:var(--ink);font-weight:800;font-size:13px}
+.chip:disabled{opacity:.4;cursor:not-allowed}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chore{display:grid;grid-template-columns:minmax(140px,2fr) 84px 84px auto auto;gap:8px;align-items:end}
+.chore .field{min-width:0}
+.chore.off{opacity:.6}
+.chore input[type=number]{width:100%;height:44px;padding:0 10px;border:2px solid var(--line);border-radius:12px;background:var(--surface);font-weight:700}
+@media (max-width:640px){.chore{grid-template-columns:1fr 1fr}.chore .field:first-child{grid-column:1/-1}}
+</style>
 </head>
 <body>
-<div class="wrap" id="root"></div>
+<div class="wrap" id="root"><p class="cap">Načítám…</p></div>
 <script src="/app.js"></script>
+<script src="/hero.js"></script>
 <script>
+const { lvlOf, tierOf, XPT, FORMS, hero, eqFor, HEAD_VIEW, ic, shield, esc, dny } = HHG;
 const root = document.getElementById("root");
+const MISSIONS = ["V posteli do 20:30", "Vyčištěné zuby", "Uklizený stůl", "Věci do školy připravené", "Nic dětského mimo pokojík"];
+const REASONS = ["Odmlouvání", "Odmítnutí pomoci", "Neposlušnost", "Hrubé chování"];
 const ROLE = { parent: "Rodič", child: "Dítě" };
+let ME = null, FAMS = [];   // FAMS: [{ g: /game odpověď, members }]
+const MARK = {};            // "childId:day" -> [indexy označené jako nesplněné]
 
-(async function () {
-  let me;
-  try { me = (await hh.api("/api/auth/me")).user; } catch (e) { location.href = "/"; return; }
-  const mine = me.memberships.filter((m) => m.role === "parent");
-  const fams = await Promise.all(mine.map((m) => hh.api("/api/family/" + m.familyId)));
+async function load() {
+  if (!ME) ME = (await hh.api("/api/auth/me")).user;
+  const mine = ME.memberships.filter((m) => m.role === "parent");
+  FAMS = await Promise.all(mine.map(async (m) => {
+    const [g, f] = await Promise.all([hh.api("/api/family/" + m.familyId + "/game"), hh.api("/api/family/" + m.familyId)]);
+    return { id: m.familyId, g, members: f.members };
+  }));
+  render();
+}
 
-  root.innerHTML =
-    hh.header(me, "parent") +
-    fams.map((f) =>
-      '<section class="panel"><div><div class="eyebrow">Rodina</div><h2>' + hh.esc(f.family.name) + "</h2></div>" +
-      '<ul class="members">' +
-      f.members.map((m) =>
-        '<li><span class="tag ' + m.role + '">' + ROLE[m.role] + "</span><b>" + hh.esc(m.displayName) + "</b></li>"
-      ).join("") + "</ul></section>"
-    ).join("") +
-    '<section class="panel soon"><h3>Schvalování misí a bonusů</h3><p class="cap">Připravujeme: fronta úkolů, které děti odeslaly, a schválení jedním klepnutím.</p></section>' +
-    '<section class="panel soon"><h3>Trhliny štítu</h3><p class="cap">Připravujeme: udělení trhliny s důvodem (max. 3 za den).</p></section>';
-})();
+function queueHTML(F) {
+  const { missions, claims } = F.g.queue;
+  const items = missions.map((m) => {
+    const key = m.childId + ":" + m.day, no = MARK[key] || [];
+    return '<div class="qi"><div class="qh"><b>' + esc(m.childName) + ' · večerní mise</b><span class="cap">' + (m.day === F.g.day ? "dnes" : esc(m.day)) + "</span></div>" +
+      '<div class="mchk">' + MISSIONS.map((label, i) => {
+        const bad = no.includes(i);
+        return '<button class="mi' + (bad ? " no" : "") + '" data-act="mark" data-k="' + key + '" data-i="' + i + '" aria-pressed="' + bad + '">' + ic(bad ? "x" : "check") + esc(label) + (bad ? " – nesplněno" : "") + "</button>";
+      }).join("") + "</div>" +
+      '<div class="inline"><button class="btn sm" data-act="approve" data-f="' + F.id + '" data-c="' + m.childId + '" data-d="' + m.day + '">Schválit (+' + F.g.limits.missionMinutes + " min, +" + F.g.limits.missionXp + ' XP)</button>' +
+      '<button class="btn ghost sm" data-act="ret" data-f="' + F.id + '" data-c="' + m.childId + '" data-d="' + m.day + '"' + (no.length ? "" : " disabled") + '>Vrátit označené</button></div>' +
+      (no.length ? "" : '<p class="cap">Chybí něco? Klepni na úkol, který není hotový, a vrať misi dítěti.</p>') + "</div>";
+  }).concat(claims.map((c) =>
+    '<div class="qi"><div class="qh"><b>' + esc(c.childName) + " · " + esc(c.label) + '</b><span class="cap">+' + c.minutes + " min · +" + c.xp + " XP</span></div>" +
+    '<div class="inline"><button class="btn sm" data-act="claim" data-a="approve" data-f="' + F.id + '" data-id="' + c.id + '">Schválit</button>' +
+    '<button class="btn ghost sm" data-act="claim" data-a="reject" data-f="' + F.id + '" data-id="' + c.id + '">Zamítnout</button></div></div>'));
+  return '<section class="panel"><h2>Ke schválení' + (items.length ? " (" + items.length + ")" : "") + "</h2>" +
+    (items.length ? '<div class="q">' + items.join("") + "</div>" : '<p class="cap">Nic nečeká. Jakmile dítě odešle misi nebo bonus, objeví se tady.</p>') + "</section>";
+}
+
+function kidHTML(F, c) {
+  const st = c.state, L = lvlOf(st.xp), n = st.strikes.length;
+  const missionPill = { open: '<span class="pill">Mise: rozdělaná</span>', pending: '<span class="pill warn">Mise: čeká na schválení</span>', approved: '<span class="pill ok">Mise: schválená</span>' }[st.mission.status];
+  return '<article class="kc"><div class="kh">' + hero(st.hero.hero, L, eqFor({ eq: st.hero.equipment }, L), HEAD_VIEW) +
+    "<div><h3>" + esc(st.hero.name || c.displayName) + '</h3><span class="cap">' + esc(c.displayName) + " · " + FORMS[tierOf(L) - 1] + " · level " + L + " · " + st.xp + " XP</span></div></div>" +
+    '<div class="stat">' + (st.regen ? '<span class="pill bad">Den regenerace: dnes bez hraní</span>' : '<span class="pill ok">Dnes ' + st.usable + " min</span>") +
+    '<span class="pill">Zítra ' + st.tomorrow + " min" + (st.tomorrowPending ? " (+" + st.tomorrowPending + " čeká)" : "") + "</span>" + missionPill +
+    '<span class="pill">' + ic("flame") + st.streak + " " + dny(st.streak) + "</span></div>" +
+    '<div><div class="eyebrow" style="margin-bottom:6px">Trhliny štítu dnes (' + n + "/" + F.g.limits.maxStrikes + ')</div><div class="shs">' + [0, 1, 2].map((i) => shield(i < n)).join("") +
+    (n ? '<span class="cap" style="margin-left:6px">' + esc(st.strikes.map((s) => s.reason).join(", ")) + "</span>" : "") + "</div></div>" +
+    (st.regenTomorrow ? '<p class="pill bad" style="justify-self:start">Štít se rozbil: zítra je Den regenerace</p>' : "") +
+    '<div class="chips">' + REASONS.map((r) => '<button class="chip" data-act="strike" data-f="' + F.id + '" data-c="' + c.id + '" data-r="' + esc(r) + '" data-n="' + esc(c.displayName) + '"' + (n >= 3 ? " disabled" : "") + ">" + r + "</button>").join("") +
+    '<button class="chip" data-act="strike" data-f="' + F.id + '" data-c="' + c.id + '" data-r="" data-n="' + esc(c.displayName) + '"' + (n >= 3 ? " disabled" : "") + ">Jiné…</button></div>" +
+    (n ? '<button class="btn ghost sm" style="justify-self:start" data-act="unstrike" data-f="' + F.id + '" data-c="' + c.id + '">Vrátit poslední trhlinu</button>' : "") + "</article>";
+}
+
+function choreHTML(F, c) {
+  return '<form class="chore' + (c.active ? "" : " off") + '" data-f="' + F.id + '" data-id="' + c.id + '">' +
+    '<div class="field"><label>Název</label><input type="text" name="label" value="' + esc(c.label) + '" maxlength="60" required></div>' +
+    '<div class="field"><label>Minuty</label><input type="number" name="minutes" value="' + c.minutes + '" min="0" max="60" required></div>' +
+    '<div class="field"><label>XP</label><input type="number" name="xp" value="' + c.xp + '" min="0" max="200" required></div>' +
+    '<button class="btn sm" type="submit">Uložit</button>' +
+    '<button class="btn ghost sm" type="button" data-act="chore-active" data-f="' + F.id + '" data-id="' + c.id + '" data-on="' + (c.active ? "0" : "1") + '">' + (c.active ? "Vypnout" : "Zapnout") + "</button></form>";
+}
+
+function render() {
+  const keep = document.activeElement && document.activeElement.closest && document.activeElement.closest("form.chore, form.newchore");
+  if (keep) return; // nepřepisuj rozepsané pole
+  root.innerHTML = hh.header(ME, "parent") + FAMS.map((F) =>
+    '<div class="eyebrow" style="margin-top:6px">Rodina</div><h1>' + esc(F.g.family.name) + "</h1>" +
+    queueHTML(F) +
+    '<section class="panel"><h2>Děti</h2>' + (F.g.children.length ? '<div class="kids">' + F.g.children.map((c) => kidHTML(F, c)).join("") + "</div>" : '<p class="cap">V rodině zatím není žádné dítě. Připojí ho správce.</p>') + "</section>" +
+    '<section class="panel"><h2>Bonusové úkoly</h2><p class="cap">Dítě je splní navíc a vy je schválíte. Bonusové minuty platí od zítřka, nejvýš ' + F.g.limits.bonusCap + " min za den.</p>" +
+    F.g.chores.map((c) => choreHTML(F, c)).join("") +
+    '<form class="chore newchore" data-f="' + F.id + '" data-new="1"><div class="field"><label>Nový úkol</label><input type="text" name="label" maxlength="60" placeholder="např. Ustlat postel" required></div>' +
+    '<div class="field"><label>Minuty</label><input type="number" name="minutes" value="5" min="0" max="60" required></div>' +
+    '<div class="field"><label>XP</label><input type="number" name="xp" value="20" min="0" max="200" required></div><button class="btn sm" type="submit">Přidat</button></form></section>' +
+    '<section class="panel"><h2>Členové rodiny</h2><ul class="members">' + F.members.map((m) => '<li><span class="tag ' + m.role + '">' + ROLE[m.role] + "</span><b>" + esc(m.displayName) + "</b></li>").join("") + "</ul></section>"
+  ).join("");
+}
+
+async function run(fn, ok) {
+  try { await fn(); if (ok) hh.toast(ok); } catch (e) { hh.toast(e.message, true); }
+  document.activeElement && document.activeElement.blur && document.activeElement.blur();
+  try { await load(); } catch (e) { hh.toast(e.message, true); }
+}
+const post = (p, b) => hh.api(p, { method: "POST", body: b || {} });
+
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-act]");
+  if (!b) return;
+  const d = b.dataset, a = d.act;
+  if (a === "mark") {
+    const arr = MARK[d.k] || (MARK[d.k] = []), i = +d.i, at = arr.indexOf(i);
+    if (at >= 0) arr.splice(at, 1); else arr.push(i);
+    render();
+  } else if (a === "approve") {
+    run(async () => { await post("/api/family/" + d.f + "/missions/" + d.c + "/" + d.d + "/approve"); delete MARK[d.c + ":" + d.d]; }, "Mise schválena");
+  } else if (a === "ret") {
+    const k = d.c + ":" + d.d;
+    run(async () => { await post("/api/family/" + d.f + "/missions/" + d.c + "/" + d.d + "/return", { uncheck: MARK[k] || [] }); delete MARK[k]; }, "Mise vrácena dítěti");
+  } else if (a === "claim") {
+    run(() => post("/api/family/" + d.f + "/claims/" + d.id + "/" + d.a), d.a === "approve" ? "Schváleno" : "Zamítnuto");
+  } else if (a === "strike") {
+    let reason = d.r;
+    if (!reason) { reason = (prompt("Důvod trhliny pro " + d.n + ":") || "").trim(); if (reason.length < 2) return; }
+    if (!confirm("Udělit trhlinu štítu: " + d.n + " – " + reason + "?")) return;
+    run(() => post("/api/family/" + d.f + "/children/" + d.c + "/strikes", { reason }), "Trhlina udělena");
+  } else if (a === "unstrike") {
+    run(() => hh.api("/api/family/" + d.f + "/children/" + d.c + "/strikes/last", { method: "DELETE" }), "Trhlina vrácena");
+  } else if (a === "chore-active") {
+    run(() => hh.api("/api/family/" + d.f + "/chores/" + d.id, { method: "PATCH", body: { active: d.on === "1" } }), d.on === "1" ? "Úkol zapnut" : "Úkol vypnut");
+  }
+});
+
+document.addEventListener("submit", (e) => {
+  const f = e.target;
+  if (!f.classList.contains("chore")) return;
+  e.preventDefault();
+  const fd = new FormData(f), body = { label: fd.get("label"), minutes: Number(fd.get("minutes")), xp: Number(fd.get("xp")) };
+  if (f.dataset.new) run(() => post("/api/family/" + f.dataset.f + "/chores", body), "Úkol přidán");
+  else run(() => hh.api("/api/family/" + f.dataset.f + "/chores/" + f.dataset.id, { method: "PATCH", body }), "Uloženo");
+});
+
+load().catch((e) => { if (e.status === 401) location.href = "/"; else root.textContent = e.message; });
+setInterval(() => { if (document.visibilityState === "visible") load().catch(() => {}); }, 20000);
 </script>
 </body>
 </html>

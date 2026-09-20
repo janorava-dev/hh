@@ -14,7 +14,7 @@
     ]
   },
   "d1_databases": [
-    { "binding": "DB", "database_name": "hh", "migrations_dir": "migrations" }
+    { "binding": "DB", "database_name": "hh", "database_id": "f501cdb3-5559-4ff7-960c-97775238fe4d", "migrations_dir": "migrations" }
   ],
   "routes": [{ "pattern": "hh.oliv.cz", "custom_domain": true }],
   "observability": { "enabled": true }

@@ -1,0 +1,238 @@
+import { HttpError, json, readJson, text } from "./http";
+import type { AuthUser } from "./auth";
+import type { Env } from "./index";
+import {
+  childState,
+  today,
+  isDay,
+  BONUS_CAP,
+  MAX_STRIKES,
+  MISSION_MINUTES,
+  MISSION_XP,
+  MISSION_ITEMS,
+} from "./game";
+
+const int = (v: unknown, label: string, min: number, max: number) => {
+  if (typeof v !== "number" || !Number.isInteger(v) || v < min || v > max) {
+    throw new HttpError(400, `Pole „${label}“ musí být celé číslo ${min}–${max}`);
+  }
+  return v;
+};
+
+/** /api/family/:id/* – členové rodiny; hra (schvalování, trhliny, úkoly) jen pro rodiče. */
+export async function family(req: Request, env: Env, url: URL, me: AuthUser): Promise<Response> {
+  const m = url.pathname.match(/^\/api\/family\/([\w-]+)(\/.*)?$/);
+  if (!m) throw new HttpError(404, "Nenalezeno");
+  const familyId = m[1];
+  const path = m[2] ?? "";
+  const role = me.memberships.find((x) => x.familyId === familyId)?.role;
+  if (!role && !me.isSuperadmin) throw new HttpError(403, "Do této rodiny nepatříš");
+  const fam = await env.DB.prepare("SELECT id, name FROM families WHERE id = ?").bind(familyId).first<{ id: string; name: string }>();
+  if (!fam) throw new HttpError(404, "Rodina neexistuje");
+
+  if (path === "" && req.method === "GET") {
+    const members = await env.DB.prepare(
+      `SELECT u.id, u.display_name AS displayName, m.role FROM memberships m JOIN users u ON u.id = m.user_id
+        WHERE m.family_id = ? AND u.disabled = 0 ORDER BY m.role, u.display_name`,
+    )
+      .bind(familyId)
+      .all();
+    return json({ family: fam, members: members.results });
+  }
+
+  // vše ostatní smí jen rodič této rodiny
+  if (role !== "parent") throw new HttpError(403, "Jen pro rodiče této rodiny");
+  const day = today(req, env);
+  let r: RegExpMatchArray | null;
+
+  const childInFamily = async (childId: string) => {
+    const c = await env.DB.prepare(
+      "SELECT u.id, u.display_name AS name FROM memberships m JOIN users u ON u.id = m.user_id WHERE m.family_id = ? AND m.user_id = ? AND m.role = 'child'",
+    )
+      .bind(familyId, childId)
+      .first<{ id: string; name: string }>();
+    if (!c) throw new HttpError(404, "Dítě v rodině neexistuje");
+    return c;
+  };
+
+  if (path === "/game" && req.method === "GET") {
+    const kids = await env.DB.prepare(
+      "SELECT u.id, u.display_name AS name FROM memberships m JOIN users u ON u.id = m.user_id WHERE m.family_id = ? AND m.role = 'child' AND u.disabled = 0 ORDER BY u.display_name",
+    )
+      .bind(familyId)
+      .all<{ id: string; name: string }>();
+    const children = await Promise.all(
+      kids.results.map(async (k) => ({ id: k.id, displayName: k.name, state: await childState(env, k.id, familyId, day) })),
+    );
+    const missions = await env.DB.prepare(
+      `SELECT d.child_id AS childId, u.display_name AS childName, d.day, d.items FROM mission_days d
+         JOIN memberships m ON m.user_id = d.child_id AND m.family_id = ? AND m.role = 'child'
+         JOIN users u ON u.id = d.child_id WHERE d.status = 'pending' ORDER BY d.day, u.display_name`,
+    )
+      .bind(familyId)
+      .all<{ childId: string; childName: string; day: string; items: string }>();
+    const claims = await env.DB.prepare(
+      `SELECT c.id, c.child_id AS childId, u.display_name AS childName, c.day, c.label, c.minutes, c.xp FROM bonus_claims c
+         JOIN memberships m ON m.user_id = c.child_id AND m.family_id = ? AND m.role = 'child'
+         JOIN users u ON u.id = c.child_id WHERE c.status = 'pending' ORDER BY c.created_at`,
+    )
+      .bind(familyId)
+      .all();
+    const chores = await env.DB.prepare(
+      "SELECT id, label, minutes, xp, active FROM chores WHERE family_id = ? ORDER BY active DESC, created_at, label",
+    )
+      .bind(familyId)
+      .all<{ id: string; label: string; minutes: number; xp: number; active: number }>();
+    return json({
+      family: fam,
+      day,
+      children,
+      queue: {
+        missions: missions.results.map((x) => ({ ...x, items: JSON.parse(x.items) })),
+        claims: claims.results,
+      },
+      chores: chores.results.map((c) => ({ ...c, active: !!c.active })),
+      limits: { bonusCap: BONUS_CAP, maxStrikes: MAX_STRIKES, missionMinutes: MISSION_MINUTES, missionXp: MISSION_XP },
+    });
+  }
+
+  /* --- mise: schválit / vrátit --- */
+  if ((r = path.match(/^\/missions\/([\w-]+)\/(\d{4}-\d{2}-\d{2})\/(approve|return)$/)) && req.method === "POST") {
+    const [, childId, mDay, action] = r;
+    await childInFamily(childId);
+    if (!isDay(mDay) || mDay > day) throw new HttpError(400, "Neplatný den");
+    const now = new Date().toISOString();
+    if (action === "approve") {
+      const upd = await env.DB.prepare(
+        "UPDATE mission_days SET status = 'approved', decided_by = ?, decided_at = ? WHERE child_id = ? AND day = ? AND status = 'pending'",
+      )
+        .bind(me.id, now, childId, mDay)
+        .run();
+      if (!upd.meta.changes) throw new HttpError(409, "Mise už není ke schválení");
+      const ref = `${childId}:${mDay}`;
+      await env.DB.batch([
+        env.DB.prepare(
+          "INSERT OR IGNORE INTO ledger (id, child_id, kind, amount, earned_day, source, ref) VALUES (?, ?, 'minutes', ?, ?, 'mission', ?)",
+        ).bind(crypto.randomUUID(), childId, MISSION_MINUTES, mDay, ref),
+        env.DB.prepare(
+          "INSERT OR IGNORE INTO ledger (id, child_id, kind, amount, earned_day, source, ref) VALUES (?, ?, 'xp', ?, ?, 'mission', ?)",
+        ).bind(crypto.randomUUID(), childId, MISSION_XP, mDay, ref),
+      ]);
+      return json({ ok: true });
+    }
+    // vrátit: rodič označí, které úkoly nejsou hotové
+    const body = await readJson(req);
+    const un = body.uncheck;
+    if (!Array.isArray(un) || !un.length || !un.every((i) => Number.isInteger(i) && i >= 0 && i < MISSION_ITEMS)) {
+      throw new HttpError(400, "Označ aspoň jeden nesplněný úkol");
+    }
+    const row = await env.DB.prepare("SELECT items FROM mission_days WHERE child_id = ? AND day = ? AND status = 'pending'")
+      .bind(childId, mDay)
+      .first<{ items: string }>();
+    if (!row) throw new HttpError(409, "Mise už není ke schválení");
+    const items = JSON.parse(row.items) as number[];
+    for (const i of un as number[]) items[i] = 0;
+    await env.DB.prepare("UPDATE mission_days SET items = ?, status = 'open', submitted_at = NULL WHERE child_id = ? AND day = ? AND status = 'pending'")
+      .bind(JSON.stringify(items), childId, mDay)
+      .run();
+    return json({ ok: true });
+  }
+
+  /* --- bonusy: schválit / zamítnout --- */
+  if ((r = path.match(/^\/claims\/([\w-]+)\/(approve|reject)$/)) && req.method === "POST") {
+    const claim = await env.DB.prepare(
+      `SELECT c.id, c.child_id, c.day, c.minutes, c.xp FROM bonus_claims c
+         JOIN memberships m ON m.user_id = c.child_id AND m.family_id = ? AND m.role = 'child'
+        WHERE c.id = ? AND c.status = 'pending'`,
+    )
+      .bind(familyId, r[1])
+      .first<{ id: string; child_id: string; day: string; minutes: number; xp: number }>();
+    if (!claim) throw new HttpError(409, "Úkol už není ke schválení");
+    const now = new Date().toISOString();
+    const status = r[2] === "approve" ? "approved" : "rejected";
+    const upd = await env.DB.prepare(
+      "UPDATE bonus_claims SET status = ?, decided_by = ?, decided_at = ? WHERE id = ? AND status = 'pending'",
+    )
+      .bind(status, me.id, now, claim.id)
+      .run();
+    if (!upd.meta.changes) throw new HttpError(409, "Úkol už není ke schválení");
+    if (status === "approved") {
+      const granted = await env.DB.prepare(
+        "SELECT COALESCE(SUM(amount), 0) AS a FROM ledger WHERE child_id = ? AND kind = 'minutes' AND source = 'bonus' AND earned_day = ?",
+      )
+        .bind(claim.child_id, claim.day)
+        .first<{ a: number }>();
+      const minutes = Math.min(claim.minutes, Math.max(0, BONUS_CAP - (granted?.a ?? 0)));
+      const stmts = [
+        env.DB.prepare(
+          "INSERT OR IGNORE INTO ledger (id, child_id, kind, amount, earned_day, source, ref) VALUES (?, ?, 'xp', ?, ?, 'bonus', ?)",
+        ).bind(crypto.randomUUID(), claim.child_id, claim.xp, claim.day, claim.id),
+      ];
+      if (minutes > 0) {
+        stmts.push(
+          env.DB.prepare(
+            "INSERT OR IGNORE INTO ledger (id, child_id, kind, amount, earned_day, source, ref) VALUES (?, ?, 'minutes', ?, ?, 'bonus', ?)",
+          ).bind(crypto.randomUUID(), claim.child_id, minutes, claim.day, claim.id),
+        );
+      }
+      await env.DB.batch(stmts);
+      return json({ ok: true, grantedMinutes: minutes });
+    }
+    return json({ ok: true });
+  }
+
+  /* --- trhliny štítu --- */
+  if ((r = path.match(/^\/children\/([\w-]+)\/strikes$/)) && req.method === "POST") {
+    await childInFamily(r[1]);
+    const reason = text((await readJson(req)).reason, "důvod", 2, 60);
+    const count = await env.DB.prepare("SELECT COUNT(*) AS n FROM strikes WHERE child_id = ? AND day = ?")
+      .bind(r[1], day)
+      .first<{ n: number }>();
+    if ((count?.n ?? 0) >= MAX_STRIKES) throw new HttpError(409, "Štít je už dnes rozbitý (3 trhliny)");
+    await env.DB.prepare("INSERT INTO strikes (id, child_id, day, reason, created_by) VALUES (?, ?, ?, ?, ?)")
+      .bind(crypto.randomUUID(), r[1], day, reason, me.id)
+      .run();
+    return json({ ok: true, count: (count?.n ?? 0) + 1 }, 201);
+  }
+
+  if ((r = path.match(/^\/children\/([\w-]+)\/strikes\/last$/)) && req.method === "DELETE") {
+    await childInFamily(r[1]);
+    await env.DB.prepare(
+      "DELETE FROM strikes WHERE id = (SELECT id FROM strikes WHERE child_id = ? AND day = ? ORDER BY created_at DESC, rowid DESC LIMIT 1)",
+    )
+      .bind(r[1], day)
+      .run();
+    return json({ ok: true });
+  }
+
+  /* --- bonusové úkoly rodiny --- */
+  if (path === "/chores" && req.method === "POST") {
+    const b = await readJson(req);
+    const id = crypto.randomUUID();
+    await env.DB.prepare("INSERT INTO chores (id, family_id, label, minutes, xp) VALUES (?, ?, ?, ?, ?)")
+      .bind(id, familyId, text(b.label, "název", 2, 60), int(b.minutes, "minuty", 0, 60), int(b.xp, "XP", 0, 200))
+      .run();
+    return json({ id }, 201);
+  }
+
+  if ((r = path.match(/^\/chores\/([\w-]+)$/)) && req.method === "PATCH") {
+    const b = await readJson(req);
+    const sets: string[] = [];
+    const vals: unknown[] = [];
+    if (b.label !== undefined) { sets.push("label = ?"); vals.push(text(b.label, "název", 2, 60)); }
+    if (b.minutes !== undefined) { sets.push("minutes = ?"); vals.push(int(b.minutes, "minuty", 0, 60)); }
+    if (b.xp !== undefined) { sets.push("xp = ?"); vals.push(int(b.xp, "XP", 0, 200)); }
+    if (b.active !== undefined) {
+      if (typeof b.active !== "boolean") throw new HttpError(400, "Pole „active“ musí být true/false");
+      sets.push("active = ?"); vals.push(b.active ? 1 : 0);
+    }
+    if (!sets.length) throw new HttpError(400, "Nic ke změně");
+    const upd = await env.DB.prepare(`UPDATE chores SET ${sets.join(", ")} WHERE id = ? AND family_id = ?`)
+      .bind(...vals, r[1], familyId)
+      .run();
+    if (!upd.meta.changes) throw new HttpError(404, "Úkol neexistuje");
+    return json({ ok: true });
+  }
+
+  throw new HttpError(404, "Nenalezeno");
+}

@@ -1,10 +1,14 @@
 import { HttpError, json } from "./http";
 import { getUser, requireUser, publicUser, login, logout, changePassword, type AuthUser } from "./auth";
 import { admin } from "./admin";
+import { child } from "./child";
+import { family } from "./family";
 
 export interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
+  /** jen lokálně (.dev.vars): povolí hlavičku x-test-day pro testy */
+  ALLOW_TEST_DAY?: string;
 }
 
 type View = "admin" | "parent" | "child";
@@ -79,22 +83,10 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
     return admin(req, env, url, me);
   }
 
-  const fam = path.match(/^\/api\/family\/([\w-]+)$/);
-  if (fam && req.method === "GET") {
+  if (path.startsWith("/api/me/") || path.startsWith("/api/family/")) {
     const me = await requireUser(req, env);
     if (me.mustChangePassword) throw new HttpError(403, "Nejdřív si změň heslo");
-    if (!me.isSuperadmin && !me.memberships.some((m) => m.familyId === fam[1])) {
-      throw new HttpError(403, "Do této rodiny nepatříš");
-    }
-    const family = await env.DB.prepare("SELECT id, name FROM families WHERE id = ?").bind(fam[1]).first();
-    if (!family) throw new HttpError(404, "Rodina neexistuje");
-    const members = await env.DB.prepare(
-      `SELECT u.id, u.display_name AS displayName, m.role FROM memberships m JOIN users u ON u.id = m.user_id
-        WHERE m.family_id = ? AND u.disabled = 0 ORDER BY m.role, u.display_name`,
-    )
-      .bind(fam[1])
-      .all();
-    return json({ family, members: members.results });
+    return path.startsWith("/api/me/") ? child(req, env, url, me) : family(req, env, url, me);
   }
 
   throw new HttpError(404, "Nenalezeno");
