@@ -36,6 +36,7 @@ npx wrangler d1 create hh             # vypíše database_id -> vlož do wrangle
 npm run db:migrate:remote
 npm run deploy
 npm run create-superadmin -- <jmeno> "<Jméno>" --remote   # zeptá se na heslo v terminálu
+# bez wrangleru: přepínač --sql vypíše SQL, které vložíte do D1 Console v dashboardu
 ```
 
 ## Struktura

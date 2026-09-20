@@ -1,5 +1,6 @@
 // Založí (nebo přepíše heslo) superadmina přímo v databázi D1. Nic se neposílá přes veřejné API.
-//   npm run create-superadmin -- <uzivatelske_jmeno> "<Zobrazované jméno>" [--local|--remote]
+//   npm run create-superadmin -- <uzivatelske_jmeno> "<Zobrazované jméno>" [--local|--remote|--sql]
+//   --sql jen vypíše příkaz, který se vloží do D1 Console v dashboardu (nepotřebuje wrangler login)
 // Heslo se zeptá v terminálu, nebo se vezme z proměnné HH_PASSWORD.
 import { pbkdf2Sync, randomBytes, randomUUID } from "node:crypto";
 import { writeFileSync, unlinkSync } from "node:fs";
@@ -9,8 +10,8 @@ import { join } from "node:path";
 import readline from "node:readline";
 
 const [, , usernameArg, displayName, target = "--local"] = process.argv;
-if (!usernameArg || !displayName || !["--local", "--remote"].includes(target)) {
-  console.error('Použití: npm run create-superadmin -- <jmeno> "<Zobrazované jméno>" [--local|--remote]');
+if (!usernameArg || !displayName || !["--local", "--remote", "--sql"].includes(target)) {
+  console.error('Použití: npm run create-superadmin -- <jmeno> "<Zobrazované jméno>" [--local|--remote|--sql]');
   process.exit(1);
 }
 const username = usernameArg.toLowerCase();
@@ -50,6 +51,12 @@ const sql = `INSERT INTO users (id, username, display_name, password_hash, is_su
 VALUES (${q(randomUUID())}, ${q(username)}, ${q(displayName)}, ${q(stored)}, 1, 0)
 ON CONFLICT (username) DO UPDATE SET password_hash = excluded.password_hash, display_name = excluded.display_name,
   is_superadmin = 1, disabled = 0, must_change_password = 0, failed_logins = 0, locked_until = NULL;`;
+
+if (target === "--sql") {
+  // bez wrangleru: SQL (obsahuje jen hash hesla) se vloží do D1 Console v dashboardu Cloudflare
+  console.log(`\n${sql}\n`);
+  process.exit(0);
+}
 
 const file = join(tmpdir(), `hh-superadmin-${randomUUID()}.sql`);
 writeFileSync(file, sql);
