@@ -1,0 +1,442 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Household Hero</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E6EEF7; --surface:#FFFFFF; --surface-2:#F0F5FB; --ink:#13203A; --ink-2:#4A5C7C; --line:#CBD8E8;
+  --outline:#13203A; --pop:#13203A;
+  --accent:#2F5BEA; --accent-ink:#FFFFFF;
+  --gold:#F5B300; --gold-soft:#FFF0C0; --ray:#FFE8A6;
+  --ok:#0E9F78; --ok-soft:#D8F5EC; --on-ok:#FFFFFF;
+  --bad:#E23B4A; --bad-soft:#FDE3E5;
+  --shadow:4px 4px 0 var(--pop);
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0D1526; --surface:#16233D; --surface-2:#1D2D4C; --ink:#EAF0FB; --ink-2:#9DB0D0; --line:#2B3E62;
+    --outline:#3A4F7C; --pop:#050A14;
+    --accent:#6C8CFF; --accent-ink:#0D1526;
+    --gold:#FFC93C; --gold-soft:#3A3011; --ray:#22345C;
+    --ok:#3DD9A8; --ok-soft:#123A33; --on-ok:#062B22;
+    --bad:#FF6673; --bad-soft:#40202A;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0D1526; --surface:#16233D; --surface-2:#1D2D4C; --ink:#EAF0FB; --ink-2:#9DB0D0; --line:#2B3E62;
+  --outline:#3A4F7C; --pop:#050A14;
+  --accent:#6C8CFF; --accent-ink:#0D1526;
+  --gold:#FFC93C; --gold-soft:#3A3011; --ray:#22345C;
+  --ok:#3DD9A8; --ok-soft:#123A33; --on-ok:#062B22;
+  --bad:#FF6673; --bad-soft:#40202A;
+}
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font:600 15px/1.4 'Nunito','Trebuchet MS',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+h1,h2,h3,.disp{font-family:'Lilita One','Trebuchet MS',system-ui,sans-serif;font-weight:400;letter-spacing:.2px;margin:0;text-wrap:balance}
+p{margin:0}
+button,input{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.ic{width:20px;height:20px;flex:none}
+.eyebrow{font-size:12px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2)}
+.cap{font-size:13px;color:var(--ink-2);font-weight:700}
+.cap.tom{display:flex;align-items:center;gap:6px;color:var(--ink);padding-top:6px;border-top:2px dashed var(--line)}
+.cap.tom .ic{width:16px;height:16px}
+
+.app{max-width:480px;margin:0 auto;padding:14px 16px 122px;display:grid;gap:18px}
+
+/* top bar */
+.top{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.mark{display:flex;align-items:center;gap:8px;font-size:21px;line-height:1}
+.mark svg{width:26px;height:30px}
+.who{display:flex;gap:8px;align-items:center}
+.kid{width:44px;height:44px;border-radius:50%;border:2.5px solid var(--outline);background:var(--surface);padding:0;overflow:hidden}
+.kid svg{width:100%;height:100%;display:block}
+.kid[aria-pressed="true"]{background:var(--gold);box-shadow:3px 3px 0 var(--pop)}
+.parent-btn{display:flex;align-items:center;gap:6px;height:44px;padding:0 12px;border:2.5px solid var(--outline);border-radius:14px;background:var(--surface);font-weight:800;font-size:13px}
+
+/* surfaces */
+.panel{background:var(--surface);border:2.5px solid var(--outline);border-radius:20px;box-shadow:var(--shadow);padding:16px}
+.flat{background:var(--surface);border:2px solid var(--line);border-radius:18px;padding:14px;display:grid;gap:10px}
+.duo{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.tile{background:var(--surface);border:2.5px solid var(--outline);border-radius:18px;padding:14px;display:grid;gap:8px;align-content:start}
+
+/* hero card */
+.herocard{display:grid;grid-template-columns:128px 1fr;gap:14px;align-items:center}
+.stage{position:relative;width:100%;max-width:100%}
+.stage::before{content:"";position:absolute;inset:-8px;background:repeating-conic-gradient(var(--ray) 0 9deg,transparent 9deg 18deg);-webkit-mask:radial-gradient(circle,#000 38%,transparent 68%);mask:radial-gradient(circle,#000 38%,transparent 68%)}
+.stage svg{position:relative;display:block;width:100%;height:auto}
+.stage.lg{width:190px;margin:0 auto}
+.hname{font-size:30px;line-height:1.05;margin:2px 0 8px}
+.xpbar{height:16px;border:2.5px solid var(--outline);border-radius:99px;background:var(--surface-2);overflow:hidden}
+.xpbar i{display:block;height:100%;background:var(--accent);border-radius:99px}
+.xpl{display:flex;justify-content:space-between;gap:8px;font-size:12px;font-weight:800;color:var(--ink-2);margin-top:5px;flex-wrap:wrap}
+.streak{display:inline-flex;align-items:center;gap:6px;margin-top:10px;padding:5px 10px 5px 8px;border-radius:99px;background:var(--gold-soft);border:2px solid var(--gold);font-size:13px;font-weight:800}
+.streak .ic{width:18px;height:18px;color:var(--gold);fill:var(--gold)}
+
+/* wallet + shield */
+.big{font-family:'Lilita One','Trebuchet MS',sans-serif;font-size:48px;line-height:1}
+.big small{font-family:'Nunito',sans-serif;font-size:15px;font-weight:800;color:var(--ink-2)}
+.lockbig{display:flex;align-items:center;gap:8px;font-family:'Lilita One',sans-serif;font-size:26px;line-height:1.1;color:var(--bad);min-height:48px}
+.lockbig .ic{width:30px;height:30px}
+.bar{height:14px;border:2.5px solid var(--outline);border-radius:99px;background:var(--surface-2);overflow:hidden;display:flex}
+.bar .ok{background:var(--ok)}
+.bar .pend{background:repeating-linear-gradient(45deg,var(--gold) 0 5px,transparent 5px 10px)}
+.shields{display:flex;gap:6px;min-height:48px;align-items:center}
+.sh{width:38px;height:44px}
+.sh .sf{fill:var(--accent);stroke:var(--outline);stroke-width:2.5;stroke-linejoin:round}
+.sh .ss{fill:var(--gold);stroke:var(--outline);stroke-width:1.6;stroke-linejoin:round}
+.sh.cr .sf{fill:var(--bad-soft);stroke:var(--bad)}
+.sh .sc{fill:none;stroke:var(--bad);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}
+
+/* banners */
+.alert{display:flex;gap:12px;align-items:flex-start;padding:14px;border-radius:18px;border:2.5px solid var(--bad);background:var(--bad-soft)}
+.alert .ic{width:26px;height:26px;color:var(--bad);margin-top:2px}
+.alert h3{font-size:20px;margin-bottom:2px}
+.alert p{font-size:14px}
+
+/* missions */
+.mhead{display:flex;justify-content:space-between;gap:12px;align-items:flex-start}
+.mhead h2{font-size:26px;line-height:1.1}
+.reward{display:grid;justify-items:end;gap:2px;font-weight:800;font-size:13px;white-space:nowrap}
+.reward b{font-family:'Lilita One',sans-serif;font-weight:400;font-size:22px;color:var(--ok)}
+.steps{display:flex;align-items:center;gap:10px;margin:12px 0}
+.steps .bar{flex:1}
+.steps .ok{background:var(--ok)}
+.steps span{font-weight:800;font-variant-numeric:tabular-nums}
+.tasks{display:grid;gap:8px}
+.task{display:flex;align-items:center;gap:12px;width:100%;min-height:58px;padding:8px 12px 8px 10px;border:2px solid var(--line);border-radius:14px;background:var(--surface-2);text-align:left}
+.task .ico{width:36px;height:36px;border-radius:10px;display:grid;place-items:center;background:var(--surface);border:2px solid var(--line);color:var(--ink-2);flex:none}
+.task .lbl{flex:1;font-weight:800;line-height:1.25}
+.task .chk{width:30px;height:30px;border-radius:50%;border:2.5px solid var(--outline);background:var(--surface);display:grid;place-items:center;flex:none;color:transparent}
+.task .chk .ic{width:18px;height:18px;stroke-width:3.2}
+.task.is-done{background:var(--ok-soft);border-color:var(--ok)}
+.task.is-done .chk{background:var(--ok);border-color:var(--ok);color:var(--on-ok)}
+.task:disabled{cursor:default}
+.status{margin-top:12px;padding:10px 12px;border-radius:12px;font-weight:800;font-size:14px;display:flex;gap:8px;align-items:center}
+.status.pend{background:var(--gold-soft);border:2px dashed var(--gold)}
+.status.ok{background:var(--ok-soft);border:2px solid var(--ok)}
+
+/* bonus */
+.bonus{display:flex;align-items:center;gap:12px}
+.bonus .ico{width:38px;height:38px;border-radius:12px;display:grid;place-items:center;background:var(--surface-2);border:2px solid var(--line);color:var(--ink-2);flex:none}
+.bonus .txt{flex:1;display:grid;gap:1px;min-width:0}
+.bonus b{font-weight:800}
+.bonus small{font-size:12px;font-weight:800;color:var(--ink-2)}
+.btn{border:2.5px solid var(--outline);background:var(--accent);color:var(--accent-ink);border-radius:12px;padding:8px 14px;font-weight:800;box-shadow:3px 3px 0 var(--pop);white-space:nowrap}
+.btn:active{transform:translate(2px,2px);box-shadow:1px 1px 0 var(--pop)}
+.btn.ghost{background:var(--surface);color:var(--ink)}
+.btn.sm{padding:6px 10px;font-size:13px}
+.tag{padding:5px 10px;border-radius:99px;font-size:12px;font-weight:800;white-space:nowrap;border:2px solid var(--line);background:var(--surface-2)}
+.tag.pend{background:var(--gold-soft);border-color:var(--gold)}
+.tag.ok{background:var(--ok-soft);border-color:var(--ok)}
+
+/* hero tab */
+.center{display:grid;justify-items:center;gap:10px;text-align:center}
+.nameinp{width:100%;max-width:260px;text-align:center;font-family:'Lilita One',sans-serif;font-size:30px;background:transparent;border:0;border-bottom:3px dashed var(--line);padding:2px 4px;color:var(--ink)}
+.path{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-top:6px}
+.step{display:grid;justify-items:center;gap:4px;text-align:center;font-size:12px;font-weight:800;padding:8px 4px;border-radius:14px;border:2px solid transparent}
+.step svg{width:100%;height:auto;max-width:78px}
+.step.now{border-color:var(--accent);background:var(--surface-2)}
+.step.ghost svg{filter:brightness(0);opacity:.2}
+.step small{color:var(--ink-2);font-weight:700}
+.picks{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.pick{display:grid;justify-items:center;gap:2px;padding:8px 4px 8px;border-radius:16px;border:2.5px solid var(--line);background:var(--surface-2);font-weight:800;font-size:13px}
+.pick svg{width:78%;height:auto}
+.pick[aria-pressed="true"]{border-color:var(--outline);background:var(--gold-soft);box-shadow:3px 3px 0 var(--pop)}
+.slot{display:grid;gap:8px;padding:12px;border-radius:14px;background:var(--surface-2);border:2px solid var(--line)}
+.slot .sl-h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.slot.locked{color:var(--ink-2);grid-template-columns:auto 1fr;align-items:center}
+.slot.locked span{font-size:13px}
+.opts{display:flex;flex-wrap:wrap;gap:8px}
+.opt{display:flex;align-items:center;gap:7px;padding:7px 11px;border-radius:99px;border:2px solid var(--line);background:var(--surface);font-weight:800;font-size:13px}
+.opt i{width:14px;height:14px;border-radius:50%;border:2px solid var(--outline)}
+.opt[aria-pressed="true"]{border-color:var(--outline);background:var(--gold-soft)}
+
+/* team tab */
+.rank{display:grid;grid-template-columns:44px 1fr auto;gap:10px;align-items:center}
+.rank .kid{cursor:default}
+.rank .bar{margin-top:5px}
+.rank .bar .ok{background:var(--accent)}
+.badges{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.badge{display:grid;justify-items:center;gap:4px;text-align:center;font-size:12px;font-weight:800;line-height:1.2}
+.badge svg{width:52px;height:52px}
+.badge.off{color:var(--ink-2)}
+.badge.off .bg{fill:var(--surface-2);stroke:var(--line)}
+.badge .bg{fill:var(--gold);stroke:var(--outline);stroke-width:2.5}
+.badge .st{fill:var(--surface);stroke:var(--outline);stroke-width:2}
+.badge.off .st{fill:var(--line);stroke:var(--line)}
+
+/* nav, sheet, toast */
+.tabs{position:fixed;left:0;right:0;bottom:0;display:flex;justify-content:center;padding:0 16px calc(10px + env(safe-area-inset-bottom,0px));pointer-events:none;z-index:10}
+.tabs .in{pointer-events:auto;display:flex;width:100%;max-width:448px;background:var(--surface);border:2.5px solid var(--outline);border-radius:20px;box-shadow:var(--shadow);padding:6px;gap:4px}
+.tab{flex:1;display:grid;justify-items:center;gap:2px;padding:7px 4px;border:0;background:none;border-radius:14px;font-size:12px;font-weight:800;color:var(--ink-2)}
+.tab .ic{width:22px;height:22px}
+.tab[aria-current="page"]{background:var(--accent);color:var(--accent-ink)}
+.scrim{position:fixed;inset:0;background:rgba(5,10,20,.55);z-index:20}
+.sheet{position:fixed;left:0;right:0;bottom:0;z-index:21;margin:0 auto;max-width:480px;max-height:88%;overflow:auto;background:var(--surface);border:2.5px solid var(--outline);border-bottom:0;border-radius:22px 22px 0 0;padding:18px 18px calc(24px + env(safe-area-inset-bottom,0px));display:grid;gap:16px}
+.sheet h2{font-size:24px}
+.sheet .note{font-size:13px;color:var(--ink-2);font-weight:700;background:var(--surface-2);border:2px dashed var(--line);border-radius:12px;padding:9px 11px}
+.sheet .sec{display:grid;gap:8px}
+.sheet .row{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--surface-2);border:2px solid var(--line);font-weight:800}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:8px 12px;border-radius:99px;border:2px solid var(--bad);background:var(--bad-soft);font-weight:800;font-size:13px}
+.chip:disabled{opacity:.4;cursor:not-allowed}
+.sh-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.x{width:40px;height:40px;border-radius:12px;border:2.5px solid var(--outline);background:var(--surface);display:grid;place-items:center;padding:0}
+.toast{position:fixed;left:50%;bottom:calc(92px + env(safe-area-inset-bottom,0px));transform:translate(-50%,12px);max-width:min(440px,calc(100% - 32px));padding:11px 16px;border-radius:14px;background:var(--ink);color:var(--bg);font-weight:800;text-align:center;opacity:0;pointer-events:none;transition:opacity .2s,transform .2s;z-index:30}
+.toast.on{opacity:1;transform:translate(-50%,0)}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+@media (max-width:360px){.herocard{grid-template-columns:104px 1fr}.hname{font-size:26px}.big{font-size:40px}}
+body{margin:0}
+</style>
+</head>
+<body>
+
+<div class="app" id="app"></div>
+<nav class="tabs" id="tabs" aria-label="Hlavní menu"></nav>
+<div class="scrim" id="scrim" hidden></div>
+<aside class="sheet" id="sheet" hidden role="dialog" aria-modal="true" aria-label="Rodičovský pohled"></aside>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(()=>{
+const $=s=>document.querySelector(s);
+const N='#13203A';
+const st=`stroke="${N}" stroke-width="3" stroke-linejoin="round" stroke-linecap="round"`;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const star=(cx,cy,R,r)=>{const p=[];for(let i=0;i<10;i++){const a=-Math.PI/2+i*Math.PI/5,q=i%2?r:R;p.push((cx+q*Math.cos(a)).toFixed(1)+','+(cy+q*Math.sin(a)).toFixed(1));}return p.join(' ');};
+const eyes=(y,dx,r)=>`<circle cx="${100-dx}" cy="${y}" r="${r}" fill="#fff"/><circle cx="${100+dx}" cy="${y}" r="${r}" fill="#fff"/><circle cx="${100-dx}" cy="${y}" r="${r/2}" fill="${N}"/><circle cx="${100+dx}" cy="${y}" r="${r/2}" fill="${N}"/>`;
+const skin='#F3C9A5';
+
+/* ---------- ekonomika ---------- */
+const XPT=[0,100,240,420,640,900,1200,1540,1920,2340];   // práh XP pro level 1..10
+const FORMS=['Učeň','Bojovník','Šampion','Legenda'];
+const lvlOf=xp=>{let l=1;XPT.forEach((t,i)=>{if(xp>=t)l=i+1});return l};
+const tierOf=l=>l>=10?4:l>=6?3:l>=3?2:1;
+const MIN_M=30,XP_M=40,CAP=60,BON_CAP=30;   // mise = 30 min na ZÍTRA; bonusy max. 30 min/den
+const MISSIONS=[['bed','V posteli do 20:30'],['tooth','Vyčištěné zuby'],['desk','Uklizený stůl'],['bag','Věci do školy připravené'],['door','Nic dětského mimo pokojík']];
+const BON={trash:{ic:'bin',label:'Vynést koš',min:5,xp:20},dish:{ic:'dish',label:'Vyndat myčku',min:10,xp:30},laundry:{ic:'shirt',label:'Složit prádlo',min:10,xp:30}};
+const REASONS=['Odmlouvání','Odmítnutí pomoci','Neposlušnost','Hrubé chování'];
+const SLOTS=[
+ {id:'cape',name:'Plášť',lvl:2,opts:[['red','Červený','#E5383B'],['blue','Modrý','#2F7DE1'],['gold','Zlatý','#F2B01E']]},
+ {id:'neck',name:'Šála a medaile',lvl:3,opts:[['scarf','Šála','#E5383B'],['medal','Medaile','#F2B01E'],['gem','Amulet','#22C7B8']]},
+ {id:'tool',name:'Nástroj',lvl:5,opts:[['broom','Koště moci','#C58B3A'],['spray','Sprej čistoty','#6FC7E8'],['sponge','Houba síly','#FFD23F']]},
+ {id:'pet',name:'Parťák',lvl:7,opts:[['slime','Slizík','#5BD08A'],['kitten','Kotě','#F0A15B'],['dragon','Dráček','#22C7B8']]},
+ {id:'aura',name:'Aura',lvl:9,opts:[['gold','Zlatá','#F5B300'],['ice','Ledová','#7CD4FF'],['fire','Ohnivá','#FF6A3D']]}
+];
+const dny=n=>n===1?'den':n>=2&&n<=4?'dny':'dní';
+
+/* ---------- hrdinové (SVG) ---------- */
+const HEROES={
+ knight:{name:'Rytíř',suit:'#3A6EA5',trim:'#22406B',acc:'#F2C14E',hand:'#C6D0E0',
+  head:()=>`<circle cx="100" cy="68" r="38" fill="#C6D0E0" ${st}/><rect x="70" y="58" width="60" height="20" rx="10" fill="#1B2436"/><circle cx="87" cy="68" r="4.5" fill="#fff"/><circle cx="113" cy="68" r="4.5" fill="#fff"/><path d="M100 31v14" stroke="#8B9AB5" stroke-width="5" stroke-linecap="round"/>`},
+ wizard:{name:'Čaroděj',suit:'#6C4AB6',trim:'#43297A',acc:'#F2C14E',hand:skin,
+  head:()=>`<circle cx="100" cy="78" r="30" fill="${skin}" ${st}/>${eyes(76,11,5.5)}<path d="M72 88Q100 134 128 88Q100 102 72 88Z" fill="#F4F6FA" ${st}/><ellipse cx="99" cy="56" rx="46" ry="10" fill="#43297A" ${st}/><polygon points="58,56 106,-2 140,56" fill="#43297A" ${st}/><polygon points="${star(100,34,8,3.4)}" fill="#F2C14E" stroke="${N}" stroke-width="2"/>`},
+ ninja:{name:'Ninja',suit:'#2F3447',trim:'#171A26',acc:'#E5383B',hand:'#171A26',
+  head:()=>`<circle cx="100" cy="68" r="38" fill="#2F3447" ${st}/><rect x="68" y="56" width="64" height="26" rx="13" fill="${skin}" ${st}/>${eyes(69,13,6)}<rect x="62" y="42" width="76" height="11" rx="4" fill="#E5383B" ${st}/><path d="M136 45L166 36L160 49L170 60L136 52Z" fill="#E5383B" ${st}/><rect x="90" y="42" width="20" height="11" rx="3" fill="#C6D0E0" ${st}/>`},
+ astro:{name:'Kosmonaut',suit:'#F1F3F8',trim:'#B9C2D6',acc:'#FF8A3D',hand:'#FF8A3D',
+  head:()=>`<circle cx="100" cy="68" r="40" fill="#F1F3F8" ${st}/><ellipse cx="100" cy="70" rx="30" ry="25" fill="#1D2B4F" ${st}/><path d="M78 60Q84 50 96 48" stroke="#fff" stroke-width="4" fill="none" stroke-linecap="round" opacity=".7"/><circle cx="90" cy="72" r="4.5" fill="#7FE3FF"/><circle cx="110" cy="72" r="4.5" fill="#7FE3FF"/><path d="M94 82Q100 87 106 82" stroke="#7FE3FF" stroke-width="3" fill="none" stroke-linecap="round"/>`},
+ robot:{name:'Robot',suit:'#2BA6A0',trim:'#16706C',acc:'#FFD23F',hand:'#9FB4C7',
+  head:()=>`<line x1="100" y1="34" x2="100" y2="18" ${st}/><circle cx="100" cy="16" r="6" fill="#E5383B" ${st}/><rect x="54" y="56" width="12" height="24" rx="4" fill="#5E7387" ${st}/><rect x="134" y="56" width="12" height="24" rx="4" fill="#5E7387" ${st}/><rect x="62" y="34" width="76" height="66" rx="18" fill="#9FB4C7" ${st}/><rect x="72" y="50" width="56" height="28" rx="10" fill="#1B2436"/><rect x="78" y="57" width="16" height="14" rx="4" fill="#FFD23F"/><rect x="106" y="57" width="16" height="14" rx="4" fill="#FFD23F"/><rect x="82" y="85" width="36" height="8" rx="3" fill="#5E7387"/>`},
+ fox:{name:'Liška',suit:'#5BA04A',trim:'#376B2C',acc:'#FFFFFF',hand:'#E8823A',
+  head:()=>`<polygon points="64,52 68,12 96,36" fill="#E8823A" ${st}/><polygon points="136,52 132,12 104,36" fill="#E8823A" ${st}/><polygon points="71,44 73,24 86,36" fill="#F6C9A0"/><polygon points="129,44 127,24 114,36" fill="#F6C9A0"/><circle cx="100" cy="70" r="38" fill="#E8823A" ${st}/><ellipse cx="100" cy="86" rx="24" ry="17" fill="#FFF3E6"/><ellipse cx="100" cy="79" rx="6" ry="4.500" fill="${N}"/><path d="M100 83v5M92 90Q100 96 108 90" stroke="${N}" stroke-width="2.5" fill="none" stroke-linecap="round"/><ellipse cx="84" cy="64" rx="5" ry="6.500" fill="${N}"/><ellipse cx="116" cy="64" rx="5" ry="6.500" fill="${N}"/><circle cx="86" cy="62" r="1.800" fill="#fff"/><circle cx="118" cy="62" r="1.800" fill="#fff"/>`}
+};
+let uid=0;
+function hero(type,level,eq,view){
+  const H=HEROES[type],tier=tierOf(level),id='a'+(++uid);
+  let s=`<svg viewBox="${view||'0 -12 200 252'}" role="img" aria-label="${H.name}" xmlns="http://www.w3.org/2000/svg">`;
+  if(eq.aura){const c={gold:['#FFE38A','#F5B300'],ice:['#D6F3FF','#4FB8F0'],fire:['#FFD08A','#FF5B2E']}[eq.aura];
+    s+=`<defs><radialGradient id="${id}"><stop offset=".35" stop-color="${c[0]}" stop-opacity=".95"/><stop offset="1" stop-color="${c[1]}" stop-opacity="0"/></radialGradient></defs><circle cx="100" cy="118" r="106" fill="url(#${id})"/>`;}
+  s+=`<ellipse cx="100" cy="226" rx="54" ry="8" fill="#000" opacity=".16"/>`;
+  if(eq.cape){const c={red:'#E5383B',blue:'#2F7DE1',gold:'#F2B01E'}[eq.cape];
+    s+=`<path d="M68 104Q32 166 38 216L162 216Q168 166 132 104Z" fill="${c}" ${st}/>`;}
+  if(type==='fox') s+=`<path d="M134 182C178 192 198 150 176 120C170 150 152 158 134 160Z" fill="#E8823A" ${st}/><circle cx="177" cy="126" r="7" fill="#FFF3E6"/>`;
+  s+=`<rect x="76" y="166" width="18" height="48" rx="8" fill="${H.trim}" ${st}/><rect x="106" y="166" width="18" height="48" rx="8" fill="${H.trim}" ${st}/><ellipse cx="85" cy="214" rx="15" ry="8" fill="${N}"/><ellipse cx="115" cy="214" rx="15" ry="8" fill="${N}"/>`;
+  s+=`<rect x="60" y="98" width="80" height="78" rx="28" fill="${H.suit}" ${st}/><rect x="65" y="151" width="70" height="11" fill="${H.trim}" stroke="${N}" stroke-width="2.500"/><rect x="94" y="149" width="12" height="15" rx="3" fill="${H.acc}" stroke="${N}" stroke-width="2.500"/>`;
+  if(tier>=2) s+=`<polygon points="${star(100,140,10,4.200)}" fill="${H.acc}" stroke="${N}" stroke-width="2.500" stroke-linejoin="round"/>`;
+  if(eq.neck==='scarf') s+=`<path d="M116 104L130 142L114 140L106 106Z" fill="#E5383B" ${st}/><rect x="64" y="92" width="72" height="16" rx="8" fill="#E5383B" ${st}/>`;
+  if(eq.neck==='medal') s+=`<path d="M84 98L100 120L116 98" fill="none" stroke="#E5383B" stroke-width="7" stroke-linejoin="round"/><circle cx="100" cy="124" r="9" fill="#F2B01E" ${st}/>`;
+  if(eq.neck==='gem') s+=`<path d="M80 98Q100 122 120 98" fill="none" stroke="#F2B01E" stroke-width="3.500" stroke-linecap="round"/><polygon points="100,112 109,123 100,136 91,123" fill="#22C7B8" ${st}/>`;
+  s+=`<rect x="40" y="106" width="22" height="58" rx="11" fill="${H.suit}" ${st}/><circle cx="51" cy="168" r="10" fill="${H.hand}" ${st}/>`;
+  s+=`<rect x="138" y="106" width="22" height="58" rx="11" fill="${H.suit}" ${st}/>`;
+  if(eq.tool==='broom') s+=`<rect x="146.500" y="116" width="5" height="98" rx="2.500" fill="#8A5A2B" stroke="${N}" stroke-width="2"/><path d="M136 196L162 196L169 224L129 224Z" fill="#E7C36B" ${st}/><path d="M143 200L141 222M149 200V222M155 200L157 222" stroke="${N}" stroke-width="2" stroke-linecap="round"/>`;
+  if(eq.tool==='spray') s+=`<rect x="140" y="150" width="20" height="34" rx="6" fill="#6FC7E8" ${st}/><rect x="141" y="140" width="22" height="12" rx="4" fill="#fff" ${st}/><rect x="162" y="143" width="9" height="5" rx="2" fill="${N}"/><circle cx="178" cy="141" r="2.500" fill="#6FC7E8"/><circle cx="183" cy="149" r="2" fill="#6FC7E8"/><circle cx="177" cy="153" r="1.800" fill="#6FC7E8"/>`;
+  if(eq.tool==='sponge') s+=`<rect x="132" y="150" width="34" height="26" rx="8" fill="#FFD23F" ${st}/><circle cx="142" cy="160" r="2.500" fill="#C99A00"/><circle cx="154" cy="167" r="2.500" fill="#C99A00"/><circle cx="141" cy="138" r="6" fill="#fff" stroke="#6FC7E8" stroke-width="2"/><circle cx="158" cy="132" r="8" fill="#fff" stroke="#6FC7E8" stroke-width="2"/><circle cx="171" cy="146" r="4" fill="#fff" stroke="#6FC7E8" stroke-width="2"/>`;
+  s+=`<circle cx="149" cy="168" r="10" fill="${H.hand}" ${st}/>`;
+  if(tier>=3) s+=`<circle cx="62" cy="110" r="13" fill="${H.trim}" ${st}/><circle cx="138" cy="110" r="13" fill="${H.trim}" ${st}/>`;
+  s+=H.head();
+  if(tier>=3) s+=`<polygon points="${star(26,66,8,3)}" fill="#F5B300"/><polygon points="${star(176,42,6,2.400)}" fill="#F5B300"/>`;
+  if(tier>=4) s+=`<ellipse cx="100" cy="-6" rx="28" ry="7" fill="none" stroke="#F5B300" stroke-width="5"/>`;
+  if(eq.pet==='slime') s+=`<path d="M12 218Q12 188 34 188Q56 188 56 218Z" fill="#5BD08A" ${st}/><circle cx="27" cy="206" r="3.500" fill="${N}"/><circle cx="41" cy="206" r="3.500" fill="${N}"/><path d="M22 196Q26 192 31 192" stroke="#fff" stroke-width="3" fill="none" stroke-linecap="round"/>`;
+  if(eq.pet==='kitten') s+=`<ellipse cx="34" cy="208" rx="20" ry="12" fill="#F0A15B" ${st}/><polygon points="20,196 22,178 33,190" fill="#F0A15B" ${st}/><polygon points="48,196 46,178 35,190" fill="#F0A15B" ${st}/><circle cx="34" cy="198" r="15" fill="#F0A15B" ${st}/><circle cx="28" cy="197" r="2.500" fill="${N}"/><circle cx="40" cy="197" r="2.500" fill="${N}"/><polygon points="32,202 36,202 34,205" fill="#F08AA3"/>`;
+  if(eq.pet==='dragon') s+=`<polygon points="22,200 6,180 32,192" fill="#7EE0D8" ${st}/><ellipse cx="34" cy="208" rx="20" ry="12" fill="#22C7B8" ${st}/><circle cx="48" cy="197" r="11" fill="#22C7B8" ${st}/><polygon points="44,188 46,180 50,187" fill="#F2B01E" ${st}/><circle cx="51" cy="196" r="2.500" fill="${N}"/><circle cx="10" cy="214" r="4" fill="#22C7B8" ${st}/>`;
+  return s+'</svg>';
+}
+const HEAD_VIEW='36 -8 128 128';
+const eqFor=(k,lv)=>{const o={};SLOTS.forEach(sl=>{if(sl.lvl<=lv&&k.eq[sl.id])o[sl.id]=k.eq[sl.id]});return o};
+
+/* ---------- ikony ---------- */
+const IC={
+ bed:'<path d="M3 19V6M3 14h18v5M21 14v-2.500A2.500 2.500 0 0 0 18.500 9H11v5"/><circle cx="7" cy="10.500" r="1.800"/>',
+ tooth:'<path d="M12 6C10.500 5 9 4.500 7.500 4.500 5.300 4.500 4 6.200 4 8.500c0 2.500 1.200 3.500 1.600 6 .3 2 .6 5.500 2 5.500 1.300 0 1.300-3.500 2.400-3.500h4c1.100 0 1.100 3.500 2.400 3.500 1.400 0 1.700-3.500 2-5.500.4-2.500 1.600-3.500 1.600-6 0-2.300-1.300-4-3.500-4-1.500 0-3 .5-4.500 1.500z"/>',
+ desk:'<path d="M3 11h18M5 11v8M19 11v8M8 11V6h5v5M16 8l2 3"/>',
+ bag:'<path d="M9 7a3 3 0 0 1 6 0M6 11a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v8a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2zM9 15h6"/>',
+ door:'<path d="M5 21V4a1 1 0 0 1 1-1h9a1 1 0 0 1 1 1v17M3 21h18M12.500 12h.01"/>',
+ bin:'<path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13M10 11v6M14 11v6"/>',
+ dish:'<circle cx="12" cy="12" r="8.500"/><circle cx="12" cy="12" r="4.500"/>',
+ shirt:'<path d="M8 4 3 7l2 4 3-1v10h8V10l3 1 2-4-5-3c-.5 1.500-2 2.500-4 2.500S8.500 5.500 8 4z"/>',
+ lock:'<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>',
+ flame:'<path d="M12 3c1 4 5 5.500 5 10a5 5 0 0 1-10 0c0-2 1-3 2-4 0 2 1 2.500 1.500 2.500C11 9 11 6 12 3z"/>',
+ home:'<path d="M3 11 12 4l9 7M5 10v10h5v-6h4v6h5V10"/>',
+ hero:'<path d="M12 3l8 3v6c0 5-3.500 8-8 9-4.500-1-8-4-8-9V6z"/>',
+ group:'<circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.500"/><path d="M3 20c0-3.500 2.500-6 6-6s6 2.500 6 6M15 14.500c3 0 6 1 6 5"/>',
+ key:'<circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v3M15 12v2"/>',
+ check:'<path d="M5 12.500l4.500 4.500L19 7"/>',
+ x:'<path d="M6 6l12 12M18 6L6 18"/>',
+ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
+};
+const ic=(n,c='')=>`<svg class="ic ${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
+const shield=cr=>`<svg class="sh ${cr?'cr':''}" viewBox="0 0 40 46" aria-hidden="true"><path class="sf" d="M20 2 36 8v14c0 11-7 19-16 22C11 41 4 33 4 22V8z"/>${cr?'<path class="sc" d="M21 5 16 17l7 5-8 10 5 11"/>':`<polygon class="ss" points="${star(20,23,9,3.800)}"/>`}</svg>`;
+
+/* ---------- stav (ukázková data) ---------- */
+const S={tab:'home',active:0,sheet:false,fk:null,kids:[
+ {name:'Blesk',hero:'knight',xp:560,eq:{cape:'red',neck:'scarf'},streak:7,strikes:[{why:'Odmlouvání',t:'16:40'}],regen:false,base:30,carry:0,m:[1,1,1,0,0],mst:'open',bonus:{trash:'done',dish:'open',laundry:'pending'},week:420,badges:[1,1,0,0]},
+ {name:'Nova',hero:'fox',xp:190,eq:{cape:'blue'},streak:3,strikes:[],regen:false,base:30,carry:0,m:[1,1,1,1,0],mst:'open',bonus:{trash:'open',dish:'open',laundry:'open'},week:310,badges:[0,1,0,0]}
+]};
+const K=()=>S.kids[S.active];
+const BADGES=['Série 7 dní','Pomocník','Ranní ptáče','Týden bez trhliny'];
+/* Pravidla času: VŠECHNY minuty (mise i bonusy) se připisují na ZÍTŘEK. k.base = co dítě vydělalo včera, k.carry = přenesené z Dne regenerace.
+   Bonusy max. BON_CAP za den. V Den regenerace je dnešek zamčený a jeho minuty se přesunou o den dál. */
+function wallet(k){let bo=0,bp=0;
+  for(const b in k.bonus){if(k.bonus[b]==='done')bo+=BON[b].min;if(k.bonus[b]==='pending')bp+=BON[b].min}
+  bo=Math.min(bo,BON_CAP);bp=Math.min(bp,BON_CAP-bo);
+  const held=k.base+k.carry,today=k.regen?0:held;
+  const tomorrow=(k.mst==='approved'?MIN_M:0)+bo+(k.regen?held:0);
+  return{bo,bp,held,today,tomorrow,tomPend:(k.mst==='pending'?MIN_M:0)+bp}}
+function award(k,xp){const b=lvlOf(k.xp);k.xp+=xp;k.week+=xp;const a=lvlOf(k.xp);
+  if(a>b){const sl=SLOTS.find(x=>x.lvl===a),fm=[3,6,10].includes(a)?` Nová forma: ${FORMS[tierOf(a)-1]}!`:'';toast(`Level ${a}!${sl?' Odemčeno: '+sl.name+'.':''}${fm}`)}}
+let tt;function toast(m){const t=$('#toast');t.textContent=m;t.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('on'),2800)}
+
+/* ---------- pohledy ---------- */
+function topView(){
+  return `<header class="top"><div class="mark disp"><svg viewBox="0 0 32 36" aria-hidden="true"><path d="M16 1 30 6v11c0 9-6 15-14 18C8 32 2 26 2 17V6z" fill="var(--accent)" stroke="var(--outline)" stroke-width="2.500" stroke-linejoin="round"/><path d="M11 10v16M21 10v16M11 18h10" stroke="var(--accent-ink)" stroke-width="3.500" stroke-linecap="round"/></svg>Household Hero</div>
+  <div class="who">${S.kids.map((k,i)=>`<button class="kid" data-act="kid" data-v="${i}" aria-pressed="${i===S.active}" aria-label="${esc(k.name)}">${hero(k.hero,lvlOf(k.xp),eqFor(k,lvlOf(k.xp)),HEAD_VIEW)}</button>`).join('')}
+  <button class="parent-btn" data-act="sheet" data-v="1">${ic('key')}Rodič</button></div></header>`;
+}
+function homeView(k){
+  const L=lvlOf(k.xp),tier=tierOf(L),w=wallet(k),n=k.strikes.length,broken=n>=3;
+  const span=L>=10?1:XPT[L]-XPT[L-1],cur=L>=10?1:k.xp-XPT[L-1],toNext=L>=10?0:XPT[L]-k.xp;
+  const done=k.m.filter(Boolean).length;
+  let h='';
+  h+=`<section class="panel herocard"><div class="stage">${hero(k.hero,L,eqFor(k,L))}</div><div>
+    <div class="eyebrow">${FORMS[tier-1]} · Level ${L}</div><h1 class="hname">${esc(k.name)}</h1>
+    <div class="xpbar" role="progressbar" aria-valuemin="0" aria-valuemax="${span}" aria-valuenow="${cur}"><i style="width:${Math.round(cur/span*100)}%"></i></div>
+    <div class="xpl"><span>${cur} / ${span} XP</span><span>${L>=10?'Nejvyšší level':`ještě ${toNext} do levelu ${L+1}`}</span></div>
+    <div class="streak">${ic('flame')}${k.streak} ${dny(k.streak)} v řadě</div></div></section>`;
+  if(k.regen) h+=`<section class="alert">${ic('lock')}<div><h3>Den regenerace</h3><p>Štít se včera rozbil. Dnes se nehraje – tvoje minuty se přesunou na zítra. Mise ti dál dají XP a sérii.</p></div></section>`;
+  else if(broken) h+=`<section class="alert">${ic('lock')}<div><h3>Štít se rozbil</h3><p>Zítra je Den regenerace: žádné hraní. Minuty se nepropadnou, přesunou se na den poté.</p></div></section>`;
+  h+=`<div class="duo"><section class="tile"><div class="eyebrow">Herní čas dnes</div>
+    ${k.regen?`<div class="lockbig">${ic('lock')}Zamčeno</div>`:`<div class="big">${w.today}<small> min</small></div>`}
+    <div class="bar" aria-hidden="true">${k.regen?'':`<i class="ok" style="width:${Math.min(100,w.today/Math.max(CAP,w.today)*100)}%"></i>`}</div>
+    <p class="cap">${k.regen?'Dnes bez hraní':k.carry?`z toho ${k.carry} min přeneseno`:'vyděláno včera'}</p>
+    <p class="cap tom">${ic('clock')}${w.tomorrow?`Zítra ${w.tomorrow} min`:'Zítra zatím 0 min'}${w.tomPend?` (+${w.tomPend} čeká)`:''}</p></section>
+   <section class="tile"><div class="eyebrow">Štít hrdiny</div>
+    <div class="shields" role="img" aria-label="${n} ze 3 trhlin štítu">${[0,1,2].map(i=>shield(i<n)).join('')}</div>
+    <p class="cap">${n?`${n} z 3 trhlin · ${esc(k.strikes[n-1].why)}`:'Štít je celý'}</p></section></div>`;
+  if(!k.regen&&!broken) h+=`<p class="cap" style="margin-top:-6px">Tři trhliny za den = zítra Den regenerace bez hraní.</p>`;
+  const locked=k.mst!=='open';
+  h+=`<section class="panel"><div class="mhead"><div><div class="eyebrow">Večerní mise · do 20:30</div><h2>Připrav se na noc</h2></div>
+    <div class="reward"><b>+${MIN_M} min</b><span>na zítra · +${XP_M} XP</span></div></div>
+    <div class="steps"><div class="bar" aria-hidden="true"><i class="ok" style="width:${done/5*100}%"></i></div><span>${done}/5</span></div>
+    <div class="tasks">${MISSIONS.map((m,i)=>`<button class="task ${k.m[i]?'is-done':''}" data-act="tick" data-v="${i}" aria-pressed="${!!k.m[i]}" ${locked?'disabled':''}><span class="ico">${ic(m[0])}</span><span class="lbl">${m[1]}</span><span class="chk">${ic('check')}</span></button>`).join('')}</div>
+    ${k.mst==='pending'?`<div class="status pend">${ic('clock')}Odesláno rodiči – čeká na schválení</div>`:''}
+    ${k.mst==='approved'?`<div class="status ok">${ic('check')}Schváleno · +${MIN_M} min na zítra a +${XP_M} XP</div>`:''}</section>`;
+  h+=`<section class="flat"><div class="eyebrow">Bonusové úkoly</div>${Object.keys(BON).map(key=>{const b=BON[key],s=k.bonus[key];
+    return `<div class="bonus"><span class="ico">${ic(b.ic)}</span><div class="txt"><b>${b.label}</b><small>+${b.min} min · +${b.xp} XP</small></div>
+    ${s==='open'?`<button class="btn sm" data-act="bonus" data-v="${key}">Hotovo</button>`:s==='pending'?`<span class="tag pend">Čeká na rodiče</span>`:`<span class="tag ok">Splněno</span>`}</div>`}).join('')}
+    <p class="cap">Minuty z bonusů se připíšou na zítra, nejvýš ${BON_CAP} min za den.</p></section>`;
+  return h;
+}
+function heroView(k){
+  const L=lvlOf(k.xp),tier=tierOf(L),span=L>=10?1:XPT[L]-XPT[L-1],cur=L>=10?1:k.xp-XPT[L-1];
+  let h=`<section class="panel center"><div class="stage lg">${hero(k.hero,L,eqFor(k,L))}</div>
+    <input id="nm" class="nameinp" value="${esc(k.name)}" maxlength="14" aria-label="Hrdinské jméno" autocomplete="off">
+    <div class="eyebrow">${FORMS[tier-1]} · Level ${L}</div>
+    <div style="width:100%"><div class="xpbar"><i style="width:${Math.round(cur/span*100)}%"></i></div><div class="xpl"><span>${cur} / ${span} XP</span><span>${L>=10?'Nejvyšší level':`do levelu ${L+1}: ${XPT[L]-k.xp} XP`}</span></div></div></section>`;
+  h+=`<section class="flat"><div class="eyebrow">Cesta hrdiny</div><div class="path">${[1,3,6,10].map((lv,i)=>`<div class="step ${lv>L?'ghost':''} ${tier===i+1?'now':''}">${hero(k.hero,lv,eqFor(k,lv))}<span>${FORMS[i]}<br><small>Level ${lv}</small></span></div>`).join('')}</div></section>`;
+  h+=`<section class="flat"><div class="eyebrow">Výbava · XP se neutrácí, jen odemyká</div>${SLOTS.map(sl=>{
+    if(L<sl.lvl) return `<div class="slot locked">${ic('lock')}<div><b>${sl.name}</b><br><span>Odemkne se na levelu ${sl.lvl} · zbývá ${XPT[sl.lvl-1]-k.xp} XP</span></div></div>`;
+    return `<div class="slot"><div class="sl-h"><b>${sl.name}</b><span class="cap">Level ${sl.lvl}</span></div><div class="opts">${sl.opts.map(o=>`<button class="opt" data-act="equip" data-v="${sl.id}:${o[0]}" aria-pressed="${k.eq[sl.id]===o[0]}"><i style="background:${o[2]}"></i>${o[1]}</button>`).join('')}</div></div>`}).join('')}</section>`;
+  h+=`<section class="flat"><div class="eyebrow">Vyber hrdinu · level a výbava zůstanou</div><div class="picks">${Object.keys(HEROES).map(t=>`<button class="pick" data-act="pick" data-v="${t}" aria-pressed="${k.hero===t}">${hero(t,1,{})}<span>${HEROES[t].name}</span></button>`).join('')}</div></section>`;
+  return h;
+}
+function teamView(k){
+  const tot=S.kids.reduce((a,x)=>a+x.week,0),goal=1000,mx=Math.max(...S.kids.map(x=>x.week),1);
+  let h=`<section class="panel"><div class="eyebrow">Rodinný cíl tohoto týdne</div><h2 style="font-size:26px;margin:2px 0 10px">Filmový večer s pizzou</h2>
+    <div class="bar"><i class="ok" style="width:${Math.min(100,tot/goal*100)}%"></i></div>
+    <div class="xpl"><span>${tot} / ${goal} XP společně</span><span>${tot>=goal?'Splněno!':`chybí ${goal-tot} XP`}</span></div></section>`;
+  h+=`<section class="flat"><div class="eyebrow">XP tento týden</div>${S.kids.map(x=>`<div class="rank"><span class="kid" style="display:block">${hero(x.hero,lvlOf(x.xp),eqFor(x,lvlOf(x.xp)),HEAD_VIEW)}</span><div><b>${esc(x.name)}</b><div class="bar"><i class="ok" style="width:${x.week/mx*100}%"></i></div></div><b style="font-variant-numeric:tabular-nums">${x.week}</b></div>`).join('')}
+    <p class="cap">Když rodina splní cíl, dostanou oba bonus – soutěží se spolu, ne proti sobě.</p></section>`;
+  h+=`<section class="flat"><div class="eyebrow">Odznaky · ${esc(k.name)}</div><div class="badges">${BADGES.map((b,i)=>`<div class="badge ${k.badges[i]?'':'off'}"><svg viewBox="0 0 52 52" aria-hidden="true"><circle class="bg" cx="26" cy="26" r="23"/><polygon class="st" points="${star(26,27,13,5.500)}"/></svg><span>${b}</span></div>`).join('')}</div></section>`;
+  return h;
+}
+function tabsView(){
+  return `<div class="in">${[['home','Domů','home'],['hero','Hrdina','hero'],['team','Družina','group']].map(t=>`<button class="tab" data-act="tab" data-v="${t[0]}" ${S.tab===t[0]?'aria-current="page"':''}>${ic(t[2])}${t[1]}</button>`).join('')}</div>`;
+}
+function sheetView(k){
+  const rows=[];
+  if(k.mst==='pending') rows.push(`<div class="row"><span>Večerní mise · 5/5</span><button class="btn sm" data-act="appm" data-v="1">Schválit</button></div>`);
+  for(const key in k.bonus) if(k.bonus[key]==='pending') rows.push(`<div class="row"><span>${BON[key].label}</span><button class="btn sm" data-act="appb" data-v="${key}">Schválit</button></div>`);
+  const full=k.strikes.length>=3;
+  return `<div class="sh-head"><h2>Rodič · ${esc(k.name)}</h2><button class="x" data-act="sheet" data-v="0" aria-label="Zavřít">${ic('x')}</button></div>
+   <p class="note">Náhled rodičovské části. V hotové aplikaci se rodič přihlásí vlastním účtem a vidí obě děti.</p>
+   <div class="sec"><div class="eyebrow">Čeká na schválení (${rows.length})</div>${rows.join('')||'<p class="cap">Nic nečeká.</p>'}</div>
+   <div class="sec"><div class="eyebrow">Přidat trhlinu štítu (${k.strikes.length}/3)</div><div class="chips">${REASONS.map(r=>`<button class="chip" data-act="strike" data-v="${esc(r)}" ${full?'disabled':''}>${r}</button>`).join('')}</div>
+    ${k.strikes.length?`<button class="btn ghost sm" style="justify-self:start" data-act="unstrike" data-v="1">Vrátit poslední trhlinu</button>`:''}</div>
+   <div class="sec"><div class="eyebrow">Simulace</div><button class="btn ghost" style="justify-self:start" data-act="newday" data-v="1">Přeskočit na další den</button><p class="cap">Vynuluje mise a trhliny. Minuty ze schválené mise se připíšou na nový den. Kdo měl 3 trhliny, má Den regenerace a jeho minuty se přesunou o den dál.</p></div>`;
+}
+function render(){
+  const k=K(),sh=$('#sheet'),keep=sh.scrollTop;
+  $('#app').innerHTML=topView()+(S.tab==='home'?homeView(k):S.tab==='hero'?heroView(k):teamView(k));
+  $('#tabs').innerHTML=tabsView();
+  sh.hidden=!S.sheet;$('#scrim').hidden=!S.sheet;
+  if(S.sheet){sh.innerHTML=sheetView(k);sh.scrollTop=keep}
+  if(S.fk){const el=document.querySelector(`[data-act="${S.fk[0]}"][data-v="${CSS.escape(S.fk[1])}"]`);if(el&&!el.disabled)el.focus({preventScroll:true})}
+}
+
+/* ---------- akce ---------- */
+document.addEventListener('click',e=>{
+  if(e.target.id==='scrim'){S.sheet=false;render();return}
+  const b=e.target.closest('[data-act]');if(!b)return;
+  const a=b.dataset.act,v=b.dataset.v,k=K();S.fk=[a,v];
+  if(a==='tab')S.tab=v;
+  else if(a==='kid')S.active=+v;
+  else if(a==='sheet'){S.sheet=v==='1';S.fk=null}
+  else if(a==='tick'){if(k.mst!=='open')return;k.m[+v]=k.m[+v]?0:1;if(k.m.every(Boolean)){k.mst='pending';toast('Mise odeslána rodiči ke schválení')}}
+  else if(a==='bonus'){k.bonus[v]='pending';toast('Odesláno rodiči')}
+  else if(a==='appm'){k.mst='approved';award(k,XP_M);if(!document.querySelector('#toast.on'))toast(`Schváleno: +${MIN_M} min na zítra a +${XP_M} XP`)}
+  else if(a==='appb'){k.bonus[v]='done';award(k,BON[v].xp);toast(`Schváleno: +${BON[v].min} min na zítra a +${BON[v].xp} XP`)}
+  else if(a==='strike'){if(k.strikes.length<3){const d=new Date();k.strikes.push({why:v,t:d.getHours()+':'+String(d.getMinutes()).padStart(2,'0')});toast(k.strikes.length>=3?`${k.name}: štít se rozbil, zítra Den regenerace`:`Trhlina štítu ${k.strikes.length}/3`)}}
+  else if(a==='unstrike'){k.strikes.pop()}
+  else if(a==='newday'){S.kids.forEach(x=>{const w=wallet(x);x.carry=x.regen?w.held:0;x.base=(x.mst==='approved'?MIN_M:0)+w.bo;x.streak=x.mst==='approved'?x.streak+1:0;x.regen=x.strikes.length>=3;x.strikes=[];x.m=[0,0,0,0,0];x.mst='open';x.bonus={trash:'open',dish:'open',laundry:'open'}});
+    toast(S.kids.some(x=>x.regen)?'Nový den · '+S.kids.filter(x=>x.regen).map(x=>x.name).join(', ')+': Den regenerace':'Nový den – mise jsou zpět');S.sheet=false}
+  else if(a==='pick'){k.hero=v}
+  else if(a==='equip'){const[sl,val]=v.split(':');if(k.eq[sl]===val)delete k.eq[sl];else k.eq[sl]=val}
+  render();
+});
+document.addEventListener('input',e=>{if(e.target.id==='nm')K().name=e.target.value.trim()||'Hrdina'});
+document.addEventListener('change',e=>{if(e.target.id==='nm'){S.fk=null;render()}});
+render();
+})();
+</script>
+
+</body>
+</html>
