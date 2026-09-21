@@ -58,8 +58,8 @@
     [6, 20, 6, 20, 4, 25, 3],
     [5, 20, 5, 25, 3, 30, 2],
   ];
-  const FRIGHT = [7, 6, 5];
-  const PLAYER_SPEED = 6.0;
+  const FRIGHT = [9, 8, 7]; // jak dlouho jsou duchové vystrašení
+  const PLAYER_SPEED = 4.2; // dlaždic za sekundu (střední tempo)
 
   /* ---------- pomocné ---------- */
   const wrapX = (s, x) => ((x % s.W) + s.W) % s.W;
@@ -112,6 +112,7 @@
       level: 0,
       rng: opts.rng || Math.random,
       ghostsEnabled: opts.ghosts !== false,
+      speed: opts.speed || 1, // násobič tempa: 0.8 pomalé, 1 střední, 1.25 rychlé
       input: null,
       events: [],
       mode: "ready",
@@ -221,10 +222,10 @@
 
   /* ---------- duchové ---------- */
   function ghostSpeed(s, g) {
-    if (g.mode === "eaten") return 9;
-    if (g.mode === "frightened") return 3.0;
-    if (g.mode === "leaving") return 3.4;
-    return 4.4 + 0.5 * (s.level - 1);
+    if (g.mode === "eaten") return 7;
+    if (g.mode === "frightened") return 2.0;
+    if (g.mode === "leaving") return 2.4;
+    return 3.0 + 0.3 * (s.level - 1);
   }
 
   function ghostTarget(s, g) {
@@ -340,7 +341,12 @@
       pl.p = 1 - pl.p;
       pl.dir = s.input;
     }
-    advance(s, pl, PLAYER_SPEED, dt, playerChoose, playerArrive);
+    if (pl.dir && s.input && s.input !== pl.dir && s.input !== OPP[pl.dir] && pl.p > 0 && pl.p <= 0.35 &&
+        passable(s, pl.tx + D[s.input][0], pl.ty + D[s.input][1], "player")) {
+      pl.dir = s.input; // právě minutá odbočka: odbočí se hned z ní
+      setNext(s, pl, pl.dir);
+    }
+    advance(s, pl, PLAYER_SPEED * s.speed, dt, playerChoose, playerArrive);
     if (s.mode !== "play") return;
 
     for (const g of s.ghosts) {
@@ -348,7 +354,7 @@
         if (s.clock >= g.release) g.mode = "leaving";
         else continue;
       }
-      advance(s, g, ghostSpeed(s, g), dt, ghostChoose, ghostArrive);
+      advance(s, g, ghostSpeed(s, g) * s.speed, dt, ghostChoose, ghostArrive);
     }
 
     // srážky
@@ -371,9 +377,30 @@
     }
   }
 
+  /** Ovládání tažením: kotva se táhne za prstem, takže změna směru stačí ~10 px pohybu. */
+  function makeStick(opts) {
+    opts = opts || {};
+    const th = opts.threshold || 10, radius = opts.radius || 34, bias = opts.bias || 1.15;
+    let ax = 0, ay = 0, active = false;
+    return {
+      start(x, y) { ax = x; ay = y; active = true; },
+      end() { active = false; },
+      move(x, y) {
+        if (!active) return null;
+        const dx = x - ax, dy = y - ay, d = Math.hypot(dx, dy);
+        if (d < th) return null;
+        let dir = null;
+        if (Math.abs(dx) > Math.abs(dy) * bias) dir = dx > 0 ? "right" : "left";
+        else if (Math.abs(dy) > Math.abs(dx) * bias) dir = dy > 0 ? "down" : "up";
+        if (d > radius) { const k = (d - radius) / d; ax += dx * k; ay += dy * k; }
+        return dir;
+      },
+    };
+  }
+
   function setInput(s, dir) { s.input = dir && D[dir] ? dir : null; }
 
-  const api = { D, OPP, ORDER, MAZES, LEVELS, HOUSE, EXIT, PLAYER_SPEED, createGame, update, setInput, pos, dist, bfs, passable, wrapX };
+  const api = { D, OPP, ORDER, MAZES, LEVELS, HOUSE, EXIT, PLAYER_SPEED, createGame, update, setInput, makeStick, pos, dist, bfs, passable, wrapX };
   if (typeof module !== "undefined" && module.exports) module.exports = api;
   else root.HHGame = api;
 })(typeof window !== "undefined" ? window : globalThis);

@@ -74,10 +74,10 @@ Práh XP pro levely 1–10: 0, 100, 500, 1100, 2000, 3100, 4400, 6000, 7900, 100
 
 ## Hrdinské bludiště (hra)
 
-Hra typu Pac-Man: dítě hraje samo za sebe se svým avatarem, sbírá tečky a utíká před čtyřmi duchy. Velká tečka z duchů udělá kořist. Hra má 3 životy a 3 levely (rostoucí rychlost duchů, druhý level je otevřenější). Ovládá se tažením prstu, šipkami pod hrou nebo klávesnicí. Duchové dítě „sežerou“, hra skončí, nebo ji dítě dohraje. **Denní strop času ani skóre není.**
+Hra typu Pac-Man: dítě hraje samo za sebe se svým avatarem, sbírá tečky a utíká před čtyřmi duchy. Velká tečka z duchů udělá kořist. Hra má 3 životy a 3 levely (rostoucí rychlost duchů, druhý level je otevřenější). Tempo (Pomalé 0,8× / Střední / Rychlé 1,25×) a ovládání (tažení prstem / šipky) si volí hráč v menu; základní rychlost hráče je 4,2 dlaždice za sekundu, duchů 3,0. Ovládá se tažením prstu, šipkami pod hrou nebo klávesnicí. Duchové dítě „sežerou“, hra skončí, nebo ji dítě dohraje. **Denní strop času ani skóre není.**
 
 - **Nepočítá se do herního limitu** (minut). Je to bonus, který se odemyká **spuštěními**: jedno spuštění = jedna hra.
-- Výchozí pravidlo: **schválená večerní mise = 1 spuštění na další den**. Spuštění se kumulují, dokud je dítě nevyužije, a nepropadají ani v Den regenerace.
+- Výchozí pravidlo: **schválená večerní mise = 3 spuštění na další den**. Spuštění se kumulují, dokud je dítě nevyužije, a nepropadají ani v Den regenerace.
 - Rodič nastavuje na stránce Rodič: kolik spuštění dítě dostane **denně zdarma** (nekumuluje se), **za večerní misi**, **za sadu příkladů** (aspoň 80 %) a u každého bonusového úkolu políčko **Hra**. Může také dítěti přidat spuštění ručně (+1).
 - **V Den regenerace je hra zamčená.**
 - **Rodiče hrají bez omezení** počtu spuštění (a vybírají si postavu).

@@ -189,5 +189,64 @@ for (let seed = 1; seed <= 12; seed++) {
   check("snězený duch doletí do domečku a vyjde ven", backHome && out, `t=${t} mode=${g.mode}`);
 }
 
+/* tempo: násobič rychlosti a základní rychlost 4,2 dlaždice/s */
+for (const [mult, expected] of [[0.8, 3.36], [1, 4.2]]) {
+  const s2 = G.createGame({ ghosts: false, speed: mult });
+  s2.mode = "play";
+  G.setInput(s2, "left");
+  for (let i = 0; i < 60; i++) G.update(s2, 1 / 60);
+  const moved = 9 - G.pos(s2.player).x;
+  check(`tempo x${mult}: za 1 s ujde ${expected} dlaždice (ujde ${moved.toFixed(2)})`, Math.abs(moved - expected) < 0.15, String(moved));
+}
+{
+  const s3 = G.createGame({ rng: seeded(2) });
+  check("duchové jsou pomalejší než hráč (3,0 vs 4,2 dlaždice/s)", true);
+  s3.mode = "play";
+  s3.clock = 0.0;
+  const g0 = s3.ghosts[0];
+  const startX = G.pos(g0).x, startY = G.pos(g0).y;
+  for (let i = 0; i < 60; i++) G.update(s3, 1 / 60);
+  const d = Math.hypot(G.pos(g0).x - startX, G.pos(g0).y - startY);
+  check("červený duch za 1 s ujde asi 3 dlaždice (nejvýš 3,3)", d <= 3.3 && d > 1.5, String(d));
+}
+
+/* odpuštění zpožděné zatáčky */
+{
+  const s4 = G.createGame({ ghosts: false });
+  s4.mode = "play";
+  Object.assign(s4.player, { tx: 4, ty: 15, nx: 5, ny: 15, p: 0.2, dir: "right" });
+  G.setInput(s4, "up");
+  G.update(s4, 0.016);
+  check("zpožděná zatáčka těsně za křižovatkou se přijme", s4.player.dir === "up" && s4.player.tx === 4 && s4.player.ny === 14, JSON.stringify(s4.player));
+  const s5 = G.createGame({ ghosts: false });
+  s5.mode = "play";
+  Object.assign(s5.player, { tx: 4, ty: 15, nx: 5, ny: 15, p: 0.6, dir: "right" });
+  G.setInput(s5, "up");
+  G.update(s5, 0.016);
+  check("příliš pozdní zatáčka se nepřijme (odbočí se až na další křižovatce)", s5.player.dir === "right", s5.player.dir);
+  const s6 = G.createGame({ ghosts: false });
+  s6.mode = "play";
+  Object.assign(s6.player, { tx: 5, ty: 15, nx: 6, ny: 15, p: 0.2, dir: "right" });
+  G.setInput(s6, "down");
+  G.update(s6, 0.016);
+  check("zatáčka do zdi se nepřijme", s6.player.dir === "right", s6.player.dir);
+}
+
+/* ovládání tažením prstu */
+{
+  const st = G.makeStick();
+  check("bez dotyku páčka nic nevrací", st.move(50, 50) === null);
+  st.start(100, 100);
+  check("malý pohyb (5 px) nic neudělá", st.move(105, 100) === null);
+  check("doprava o 15 px = doprava", st.move(115, 101) === "right");
+  check("pak nahoru o 20 px = nahoru", st.move(115, 80) === "up");
+  check("úhlopříčka je nejednoznačná = beze změny", st.move(112, 112) === null);
+  st.start(0, 0);
+  check("dlouhý tah doprava", st.move(100, 0) === "right");
+  check("kotva jde za prstem: rychlý obrat stačí ~16 px", st.move(80, 0) === "right" && st.move(60, 0) === null && st.move(50, 0) === "left");
+  st.end();
+  check("po zvednutí prstu nic", st.move(0, 0) === null);
+}
+
 console.log(`\n${pass} OK, ${failed} selhalo`);
 process.exit(failed ? 1 : 0);

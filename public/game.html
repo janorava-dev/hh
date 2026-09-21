@@ -33,7 +33,8 @@ canvas{touch-action:none;border-radius:14px;background:#0B1120;max-width:100%;ma
 .pad button:active{background:var(--accent);color:var(--accent-ink)}
 .pad .u{grid-column:2;grid-row:1}.pad .l{grid-column:1;grid-row:2}.pad .d{grid-column:2;grid-row:2}.pad .r{grid-column:3;grid-row:2}
 .pad svg{width:28px;height:28px}
-@media (pointer:coarse){.pad{display:grid}}
+.pad.on{display:grid}
+@media (max-width:560px){.gh h1{display:none}.g{padding-left:6px;padding-right:6px}.hud b{font-size:20px}}
 .opts{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;align-items:center}
 select{max-width:220px}
 .mute{border:2px solid var(--line);background:var(--surface);border-radius:12px;padding:6px 10px;font-weight:800}
@@ -66,6 +67,13 @@ let S = null;          // stav hry (HHGame)
 let status = null;     // odpověď /api/game/status
 let runId = null, finishing = false, paused = false, running = false;
 let avatar = null, avId = 0, heroType = "knight", lastTime = 0, clock = 0;
+const prefs = { speed: 1, ctrl: "swipe" };
+try {
+  prefs.speed = Number(localStorage.getItem("hh_game_speed")) || 1;
+  prefs.ctrl = localStorage.getItem("hh_game_ctrl") === "pad" ? "pad" : "swipe";
+} catch (e) {}
+const savePref = (k, v) => { try { localStorage.setItem(k, String(v)); } catch (e) {} };
+function applyCtrl() { $("#pad").classList.toggle("on", prefs.ctrl === "pad"); resize(); }
 
 /* ---------- zvuk ---------- */
 let actx = null, soundOn = true;
@@ -249,16 +257,16 @@ document.addEventListener("keydown", (e) => {
   if (d && S && running) { e.preventDefault(); G.setInput(S, d); }
   if (e.key === " " && running) { e.preventDefault(); togglePause(); }
 });
-let tx0 = 0, ty0 = 0, touching = false;
-function swipe(x, y) {
-  const dx = x - tx0, dy = y - ty0;
-  if (Math.hypot(dx, dy) < 16) return;
-  if (S && running) G.setInput(S, Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? "right" : "left") : (dy > 0 ? "down" : "up"));
-  tx0 = x; ty0 = y; // další tah navazuje, prst se nemusí zvedat
-}
-stage.addEventListener("touchstart", (e) => { if (e.target.closest(".ov")) return; const t = e.touches[0]; tx0 = t.clientX; ty0 = t.clientY; touching = true; e.preventDefault(); }, { passive: false });
-stage.addEventListener("touchmove", (e) => { if (!touching) return; const t = e.touches[0]; swipe(t.clientX, t.clientY); e.preventDefault(); }, { passive: false });
-stage.addEventListener("touchend", () => { touching = false; });
+const stick = G.makeStick({ threshold: 9, radius: 30 });
+const touchPos = (e) => { const t = e.touches[0] || e.changedTouches[0]; return [t.clientX, t.clientY]; };
+stage.addEventListener("touchstart", (e) => { if (e.target.closest(".ov")) return; const p = touchPos(e); stick.start(p[0], p[1]); e.preventDefault(); }, { passive: false });
+stage.addEventListener("touchmove", (e) => {
+  const p = touchPos(e), d = stick.move(p[0], p[1]);
+  if (d && S && running && !paused) G.setInput(S, d);
+  e.preventDefault();
+}, { passive: false });
+stage.addEventListener("touchend", () => stick.end());
+stage.addEventListener("touchcancel", () => stick.end());
 document.querySelectorAll(".pad button").forEach((b) => {
   const go = (e) => { e.preventDefault(); if (S && running) G.setInput(S, b.dataset.d); };
   b.addEventListener("pointerdown", go);
@@ -321,7 +329,7 @@ function showMenu(result) {
   if (result) {
     body += `<div class="eyebrow">Konec hry</div><div class="big">${result.score}</div><p>${result.won ? "Prošel(a) jsi všechny levely!" : "Level " + result.level}${result.isBest ? " · Nový rekord!" : ""}</p>`;
   } else {
-    body += `<div class="eyebrow">Hrdinské bludiště</div><h2>Seber všechny tečky a nenech se chytit duchy</h2><p class="cap">Táhni prstem nebo mačkej šipky. Velká tečka z duchů udělá kořist. Máš 3 životy a 3 levely.</p>`;
+    body += `<div class="eyebrow">Hrdinské bludiště</div><h2>Seber všechny tečky a nenech se chytit duchy</h2><p class="cap">Táhni prstem kamkoli po hracím poli, nemusíš ho zvedat. Nebo mačkej šipky. Velká tečka z duchů udělá kořist. Máš 3 životy a 3 levely.</p>`;
   }
   let canPlay = false;
   if (status.unlimited) {
@@ -336,12 +344,18 @@ function showMenu(result) {
   } else {
     body += `<p><b>Dnes už nemáš žádné spuštění.</b></p><p class="cap">${p.tomorrow > 0 ? `Zítra ti přibude ${p.tomorrow} ${p.tomorrow === 1 ? "spuštění" : "spuštění"}.` : "Spuštění získáš třeba splněním večerní mise. Dostaneš ho pak další den."}</p>`;
   }
+  const so = (v, t) => `<option value="${v}"${prefs.speed === v ? " selected" : ""}>${t}</option>`;
+  const co = (v, t) => `<option value="${v}"${prefs.ctrl === v ? " selected" : ""}>${t}</option>`;
+  body += `<div class="opts"><label for="tempo">Tempo</label><select id="tempo">${so(0.8, "Pomalé")}${so(1, "Střední")}${so(1.25, "Rychlé")}</select><label for="ctrl">Ovládání</label><select id="ctrl">${co("swipe", "Tažení prstem")}${co("pad", "Šipky")}</select></div>`;
   body += `<p class="cap">Tvůj rekord: <b>${status.best}</b></p>${board(status.scores)}`;
   body += `<div class="opts">${canPlay ? `<button class="btn" id="play">${result ? "Hrát znovu" : "Hrát"}</button>` : ""}<a class="btn ghost" href="${$("#back").href}">Zpět do aplikace</a></div>`;
   ov.hidden = false;
   ov.innerHTML = `<div class="panel">${body}</div>`;
   const hs = $("#hsel");
   if (hs) hs.onchange = () => { heroType = hs.value; try { localStorage.setItem("hh_game_hero", heroType); } catch (e) {} avatar = makeAvatar(heroType, 2340, {}); };
+  const tp = $("#tempo"), cs = $("#ctrl");
+  if (tp) tp.onchange = () => { prefs.speed = Number(tp.value); savePref("hh_game_speed", prefs.speed); };
+  if (cs) cs.onchange = () => { prefs.ctrl = cs.value; savePref("hh_game_ctrl", prefs.ctrl); applyCtrl(); };
   const pb = $("#play");
   if (pb) pb.onclick = start;
 }
@@ -360,7 +374,7 @@ async function start() {
     return;
   }
   try { actx = actx || new (window.AudioContext || window.webkitAudioContext)(); actx.resume && actx.resume(); } catch (e) {}
-  S = G.createGame();
+  S = G.createGame({ speed: prefs.speed });
   walls = null; finishing = false; paused = false; running = true;
   ov.hidden = true;
 }
@@ -377,7 +391,7 @@ async function finish() {
   setTimeout(() => showMenu(res), 900);
 }
 
-resize();
+applyCtrl();
 requestAnimationFrame(frame);
 load();
 })();

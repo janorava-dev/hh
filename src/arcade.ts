@@ -5,7 +5,7 @@ import { addDays, today, MAX_STRIKES, XPT } from "./game";
 
 /* ---------- pravidla hry (musí sedět s docs/pravidla.md) ---------- */
 
-export const DEFAULT_SETTINGS = { dailyPlays: 0, missionPlays: 1, trainPlays: 0 };
+export const DEFAULT_SETTINGS = { dailyPlays: 0, missionPlays: 3, trainPlays: 0 };
 const MAX_SCORE = 60_000;
 const MAX_POINTS_PER_SECOND = 120; // rozumná horní mez, aby nešly posílat vymyšlené výsledky
 export const GAME_LEVELS = 3;

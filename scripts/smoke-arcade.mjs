@@ -76,6 +76,19 @@ for (let i = 0; i < 3; i++) {
 r = await parent.req("POST", "/api/game/finish", { runId: "neexistuje", score: 10, level: 1, won: false });
 check("neznámá hra při ukončení = 404", r.status === 404);
 
+/* ---- výchozí pravidlo: schválená mise = 3 spuštění na další den ---- */
+r = await parent.req("GET", `/api/family/${fam}/game`);
+check("výchozí pravidlo: mise dává 3 spuštění, denní základ 0", r.data.gameSettings.missionPlays === 3 && r.data.gameSettings.dailyPlays === 0 && r.data.gameSettings.trainPlays === 0, JSON.stringify(r.data.gameSettings));
+await approveMission(kid2, D(1));
+s = await status(kid2);
+check("schválená mise (výchozí pravidlo): zítra +3 spuštění", s.plays.tomorrow === 3, JSON.stringify(s.plays));
+setDay(D(2), ...all);
+s = await status(kid2);
+check("druhý den má dítě 3 spuštění", s.plays.available === 3, JSON.stringify(s.plays));
+setDay(D(1), ...all);
+// dál testujeme 1 spuštění za misi, ať zůstane počítání přehledné
+await parent.req("PATCH", `/api/family/${fam}/game-settings`, { missionPlays: 1 });
+
 /* ---- večerní mise = spuštění na další den ---- */
 r = await approveMission(kid, D(1));
 check("schválení mise", r.status === 200);
