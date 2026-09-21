@@ -29,6 +29,8 @@ echo ALLOW_TEST_DAY=1 > .dev.vars     # jen lokálně: testy smí přepsat den h
 npm run test:smoke                    # v druhém terminálu, když běží dev server
 npm run test:game                     # herní smyčka: mise, bonusy, trhliny, přenos minut
 npm run test:train                    # trénink počítání, rok narození, historie a CSV
+npm run test:core                     # jádro hry (bludiště, duchové, bodování)
+npm run test:arcade                   # spuštění hry, nastavení odměn, Den regenerace
 npm run test:pages                    # syntaxe skriptů ve stránkách (spouštět před každým nasazením)
 ```
 

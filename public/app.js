@@ -36,6 +36,7 @@
     if (u.isSuperadmin) links.push(["admin", "/admin", "Správa"]);
     if (u.memberships.some((m) => m.role === "parent")) links.push(["parent", "/parent", "Rodič"]);
     if (u.memberships.some((m) => m.role === "child")) links.push(["child", "/child", "Dítě"]);
+    if (u.isSuperadmin || u.memberships.length) links.push(["game", "/game", "Hra"]);
     return (
       '<header class="top"><div class="mark disp">' + MARK + "Household Hero</div>" +
       '<nav class="nav" aria-label="Menu">' +

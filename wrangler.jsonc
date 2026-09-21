@@ -10,7 +10,8 @@
       "/api/*",
       "/admin", "/admin.html",
       "/parent", "/parent.html",
-      "/child", "/child.html"
+      "/child", "/child.html",
+      "/game", "/game.html"
     ]
   },
   "d1_databases": [

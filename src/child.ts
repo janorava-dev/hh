@@ -3,6 +3,7 @@ import type { AuthUser } from "./auth";
 import type { Env } from "./index";
 import { childState, today, MISSION_ITEMS, HEROES, SLOTS, levelOf, XPT } from "./game";
 import { train } from "./train";
+import { playsFor } from "./arcade";
 import { history, clampDays, touchStats } from "./stats";
 
 const isUnique = (e: unknown) => e instanceof Error && /UNIQUE|constraint/i.test(e.message);
@@ -35,6 +36,7 @@ export async function child(req: Request, env: Env, url: URL, me: AuthUser): Pro
     return json({
       state: st,
       levels: XPT,
+      arcade: await playsFor(env, me.id, membership.familyId, day),
       displayName: me.displayName,
       familyName: membership.familyName,
       siblings: siblings.results.map((s) => ({

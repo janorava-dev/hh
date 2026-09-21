@@ -2,6 +2,7 @@ import { HttpError, json, readJson, text } from "./http";
 import type { AuthUser } from "./auth";
 import type { Env } from "./index";
 import { touchStats } from "./stats";
+import { getSettings, grantCredit } from "./arcade";
 
 /* ---------- pravidla tréninku (musí sedět s docs/pravidla.md) ---------- */
 
@@ -356,6 +357,10 @@ export async function train(req: Request, env: Env, url: URL, me: AuthUser, day:
       );
     }
     if (ins.length) await env.DB.batch(ins);
+    if (!tooFast && ratio >= PASS) {
+      const fam = me.memberships.find((m) => m.role === "child");
+      if (fam) await grantCredit(env, me.id, (await getSettings(env, fam.familyId)).trainPlays, s.day, "train", s.id);
+    }
     await touchStats(env, me.id, s.day, day);
     return json({
       index: idx,

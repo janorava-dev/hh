@@ -258,6 +258,8 @@ function homeView(k,st){
     <div class="shields" role="img" aria-label="${n} ze 3 trhlin štítu">${[0,1,2].map(i=>shield(i<n)).join('')}</div>
     <p class="cap">${n?`${n} z 3 trhlin · ${esc(st.strikes[n-1].reason)}`:'Štít je celý'}</p></section></div>`;
   if(!st.regen&&!broken) h+=`<p class="cap" style="margin-top:-6px">Tři trhliny za den = zítra Den regenerace bez hraní.</p>`;
+  const ar=S.g.arcade;
+  h+=`<section class="flat"><div class="eyebrow">Hrdinské bludiště</div><div class="bonus"><span class="ico">${ic('play')}</span><div class="txt"><b>${ar.locked?'Dnes zamčeno (Den regenerace)':ar.available>0?`Máš ${ar.available} spuštění`:'Dnes žádné spuštění'}</b><small>${ar.tomorrow>0?`Zítra ti přibude ${ar.tomorrow} za dnešní misi`:'Spuštění získáš třeba večerní misí (platí další den)'}</small></div>${ar.available>0&&!ar.locked?'<a class="btn sm" href="/game">Hrát</a>':'<a class="btn ghost sm" href="/game">Otevřít</a>'}</div></section>`;
   h+=`<section class="panel"><div class="mhead"><div><div class="eyebrow">Večerní mise · do 20:30</div><h2>Připrav se na noc</h2></div>
     <div class="reward"><b>+${MIN_M} min</b><span>na zítra · +${XP_M} XP</span></div></div>
     <div class="steps"><div class="bar" aria-hidden="true"><i class="ok" style="width:${done/5*100}%"></i></div><span>${done}/5</span></div>

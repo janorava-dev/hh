@@ -4,6 +4,7 @@ import { admin } from "./admin";
 import { child } from "./child";
 import { family } from "./family";
 import { refreshAll } from "./stats";
+import { arcade } from "./arcade";
 
 export interface Env {
   ASSETS: Fetcher;
@@ -12,7 +13,7 @@ export interface Env {
   ALLOW_TEST_DAY?: string;
 }
 
-type View = "admin" | "parent" | "child";
+type View = "admin" | "parent" | "child" | "game";
 
 const PAGES: Record<string, View> = {
   "/admin": "admin",
@@ -21,10 +22,12 @@ const PAGES: Record<string, View> = {
   "/parent.html": "parent",
   "/child": "child",
   "/child.html": "child",
+  "/game": "game",
+  "/game.html": "game",
 };
 
 const canSee = (u: AuthUser, view: View) =>
-  view === "admin" ? u.isSuperadmin : u.memberships.some((m) => m.role === view);
+  view === "admin" ? u.isSuperadmin : view === "game" ? u.isSuperadmin || u.memberships.length > 0 : u.memberships.some((m) => m.role === view);
 
 const homeFor = (u: AuthUser) =>
   u.isSuperadmin ? "/admin" : u.memberships.some((m) => m.role === "parent") ? "/parent" : u.memberships.length ? "/child" : "/";
@@ -87,6 +90,12 @@ async function api(req: Request, env: Env, url: URL): Promise<Response> {
     const me = await requireUser(req, env);
     if (me.mustChangePassword) throw new HttpError(403, "Nejdřív si změň heslo");
     return admin(req, env, url, me);
+  }
+
+  if (path.startsWith("/api/game/")) {
+    const me = await requireUser(req, env);
+    if (me.mustChangePassword) throw new HttpError(403, "Nejdřív si změň heslo");
+    return arcade(req, env, url, me);
   }
 
   if (path.startsWith("/api/me/") || path.startsWith("/api/family/")) {

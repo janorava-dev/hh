@@ -31,10 +31,10 @@
 .chip{padding:8px 12px;border-radius:99px;border:2px solid var(--bad);background:var(--bad-soft);color:var(--ink);font-weight:800;font-size:13px}
 .chip:disabled{opacity:.4;cursor:not-allowed}
 .chips{display:flex;flex-wrap:wrap;gap:8px}
-.chore{display:grid;grid-template-columns:minmax(140px,2fr) 84px 84px auto auto;gap:8px;align-items:end}
+.chore{display:grid;grid-template-columns:minmax(140px,2fr) 76px 76px 76px auto auto;gap:8px;align-items:end}
 .chore .field{min-width:0}
 .chore.off{opacity:.6}
-.chore input[type=number]{width:100%;height:44px;padding:0 10px;border:2px solid var(--line);border-radius:12px;background:var(--surface);font-weight:700}
+.gset input[type=number],.chore input[type=number]{width:100%;height:44px;padding:0 10px;border:2px solid var(--line);border-radius:12px;background:var(--surface);font-weight:700}
 @media (max-width:640px){.chore{grid-template-columns:1fr 1fr}.chore .field:first-child{grid-column:1/-1}}
 </style>
 </head>
@@ -80,6 +80,23 @@ function queueHTML(F) {
     '<button class="btn ghost sm" data-act="claim" data-a="reject" data-f="' + F.id + '" data-id="' + c.id + '">Zamítnout</button></div></div>'));
   return '<section class="panel"><h2>Ke schválení' + (items.length ? " (" + items.length + ")" : "") + "</h2>" +
     (items.length ? '<div class="q">' + items.join("") + "</div>" : '<p class="cap">Nic nečeká. Jakmile dítě odešle misi nebo bonus, objeví se tady.</p>') + "</section>";
+}
+
+function gameHTML(F, c) {
+  const p = c.plays;
+  return '<div class="inline"><span class="pill' + (p.locked ? " bad" : p.available ? " ok" : "") + '">Hra: ' + (p.locked ? "zamčeno (Den regenerace)" : p.available + " spuštění") +
+    (p.tomorrow ? " (+" + p.tomorrow + " zítra)" : "") + '</span><button class="btn ghost sm" data-act="gcredit" data-f="' + F.id + '" data-c="' + c.id + '">+1 spuštění</button></div>';
+}
+
+function gameSettingsHTML(F) {
+  const s = F.g.gameSettings;
+  const num = (label, name, v) => '<div class="field"><label>' + label + '</label><input type="number" name="' + name + '" value="' + v + '" min="0" max="10" required></div>';
+  return '<section class="panel"><h2>Hrdinské bludiště</h2><p class="cap">Kolik spuštění hry dítě dostává. Spuštění za misi, trénink nebo úkol platí od dalšího dne a kumulují se, dokud je dítě nevyužije. ' +
+    "Rodiče hrají bez omezení.</p>" +
+    '<form class="gset" data-f="' + F.id + '"><div class="row2">' +
+    num("Denně zdarma", "dailyPlays", s.dailyPlays) + num("Za schválenou večerní misi", "missionPlays", s.missionPlays) + num("Za sadu příkladů (aspoň 80 %)", "trainPlays", s.trainPlays) +
+    '</div><div class="inline"><button class="btn sm" type="submit">Uložit</button><a class="btn ghost sm" href="/game">Zahrát si (bez omezení)</a></div></form>' +
+    '<p class="cap">Spuštění za konkrétní bonusový úkol nastavíte u úkolu níž, políčko „Hra“.</p></section>';
 }
 
 function birthHTML(F, c) {
@@ -132,7 +149,7 @@ function kidHTML(F, c) {
     "<div><h3>" + esc(st.hero.name || c.displayName) + '</h3><span class="cap">' + esc(c.displayName) + " · " + FORMS[tierOf(L) - 1] + " · level " + L + " · " + st.xp + " XP</span></div></div>" +
     '<div class="stat">' + (st.regen ? '<span class="pill bad">Den regenerace: dnes bez hraní</span>' : '<span class="pill ok">Dnes ' + st.usable + " min</span>") +
     '<span class="pill">Zítra ' + st.tomorrow + " min" + (st.tomorrowPending ? " (+" + st.tomorrowPending + " čeká)" : "") + "</span>" + missionPill +
-    '<span class="pill">' + ic("flame") + st.streak + " " + dny(st.streak) + "</span></div>" + birthHTML(F, c) +
+    '<span class="pill">' + ic("flame") + st.streak + " " + dny(st.streak) + "</span></div>" + birthHTML(F, c) + gameHTML(F, c) +
     '<div><div class="eyebrow" style="margin-bottom:6px">Trhliny štítu dnes (' + n + "/" + F.g.limits.maxStrikes + ')</div><div class="shs">' + [0, 1, 2].map((i) => shield(i < n)).join("") +
     (n ? '<span class="cap" style="margin-left:6px">' + esc(st.strikes.map((s) => s.reason).join(", ")) + "</span>" : "") + "</div></div>" +
     (st.regenTomorrow ? '<p class="pill bad" style="justify-self:start">Štít se rozbil: zítra je Den regenerace</p>' : "") +
@@ -146,22 +163,23 @@ function choreHTML(F, c) {
     '<div class="field"><label>Název</label><input type="text" name="label" value="' + esc(c.label) + '" maxlength="60" required></div>' +
     '<div class="field"><label>Minuty</label><input type="number" name="minutes" value="' + c.minutes + '" min="0" max="60" required></div>' +
     '<div class="field"><label>XP</label><input type="number" name="xp" value="' + c.xp + '" min="0" max="200" required></div>' +
+    '<div class="field"><label>Hra</label><input type="number" name="gamePlays" value="' + (c.gamePlays || 0) + '" min="0" max="5" required></div>' +
     '<button class="btn sm" type="submit">Uložit</button>' +
     '<button class="btn ghost sm" type="button" data-act="chore-active" data-f="' + F.id + '" data-id="' + c.id + '" data-on="' + (c.active ? "0" : "1") + '">' + (c.active ? "Vypnout" : "Zapnout") + "</button></form>";
 }
 
 function render() {
-  const keep = document.activeElement && document.activeElement.closest && document.activeElement.closest("form.chore, form.newchore");
+  const keep = document.activeElement && document.activeElement.closest && document.activeElement.closest("form.chore, form.newchore, form.gset");
   if (keep) return; // nepřepisuj rozepsané pole
   root.innerHTML = hh.header(ME, "parent") + FAMS.map((F) =>
     '<div class="eyebrow" style="margin-top:6px">Rodina</div><h1>' + esc(F.g.family.name) + "</h1>" +
     queueHTML(F) +
     '<section class="panel"><h2>Děti</h2>' + (F.g.children.length ? '<div class="kids">' + F.g.children.map((c) => kidHTML(F, c)).join("") + "</div>" : '<p class="cap">V rodině zatím není žádné dítě. Připojí ho správce.</p>') + "</section>" +
-    histHTML(F) + '<section class="panel"><h2>Bonusové úkoly</h2><p class="cap">Dítě je splní navíc a vy je schválíte. Bonusové minuty i XP se připíšou po schválení, minuty platí od zítřka. Bez denního stropu.</p>' +
+    histHTML(F) + gameSettingsHTML(F) + '<section class="panel"><h2>Bonusové úkoly</h2><p class="cap">Dítě je splní navíc a vy je schválíte. Bonusové minuty i XP se připíšou po schválení, minuty platí od zítřka. Bez denního stropu.</p>' +
     F.g.chores.map((c) => choreHTML(F, c)).join("") +
     '<form class="chore newchore" data-f="' + F.id + '" data-new="1"><div class="field"><label>Nový úkol</label><input type="text" name="label" maxlength="60" placeholder="např. Ustlat postel" required></div>' +
     '<div class="field"><label>Minuty</label><input type="number" name="minutes" value="5" min="0" max="60" required></div>' +
-    '<div class="field"><label>XP</label><input type="number" name="xp" value="20" min="0" max="200" required></div><button class="btn sm" type="submit">Přidat</button></form></section>' +
+    '<div class="field"><label>XP</label><input type="number" name="xp" value="20" min="0" max="200" required></div><div class="field"><label>Hra</label><input type="number" name="gamePlays" value="0" min="0" max="5" required></div><button class="btn sm" type="submit">Přidat</button></form></section>' +
     '<section class="panel"><h2>Členové rodiny</h2><ul class="members">' + F.members.map((m) => '<li><span class="tag ' + m.role + '">' + ROLE[m.role] + "</span><b>" + esc(m.displayName) + "</b></li>").join("") + "</ul></section>"
   ).join("");
 }
@@ -195,6 +213,8 @@ document.addEventListener("click", (e) => {
     run(() => post("/api/family/" + d.f + "/children/" + d.c + "/strikes", { reason }), "Trhlina udělena");
   } else if (a === "unstrike") {
     run(() => hh.api("/api/family/" + d.f + "/children/" + d.c + "/strikes/last", { method: "DELETE" }), "Trhlina vrácena");
+  } else if (a === "gcredit") {
+    run(() => post("/api/family/" + d.f + "/children/" + d.c + "/game-credit", { plays: 1 }), "Spuštění přidáno");
   } else if (a === "hist") {
     loadHist(d.f);
   } else if (a === "chore-active") {
@@ -214,9 +234,15 @@ document.addEventListener("change", (e) => {
 
 document.addEventListener("submit", (e) => {
   const f = e.target;
+  if (f.classList.contains("gset")) {
+    e.preventDefault();
+    const g = new FormData(f);
+    run(() => hh.api("/api/family/" + f.dataset.f + "/game-settings", { method: "PATCH", body: { dailyPlays: Number(g.get("dailyPlays")), missionPlays: Number(g.get("missionPlays")), trainPlays: Number(g.get("trainPlays")) } }), "Nastavení hry uloženo");
+    return;
+  }
   if (!f.classList.contains("chore")) return;
   e.preventDefault();
-  const fd = new FormData(f), body = { label: fd.get("label"), minutes: Number(fd.get("minutes")), xp: Number(fd.get("xp")) };
+  const fd = new FormData(f), body = { label: fd.get("label"), minutes: Number(fd.get("minutes")), xp: Number(fd.get("xp")), gamePlays: Number(fd.get("gamePlays")) };
   if (f.dataset.new) run(() => post("/api/family/" + f.dataset.f + "/chores", body), "Úkol přidán");
   else run(() => hh.api("/api/family/" + f.dataset.f + "/chores/" + f.dataset.id, { method: "PATCH", body }), "Uloženo");
 });

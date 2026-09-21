@@ -13,7 +13,9 @@
     "test:smoke": "node scripts/smoke-test.mjs",
     "test:game": "node scripts/smoke-game.mjs",
     "test:pages": "node scripts/check-pages.mjs",
-    "test:train": "node scripts/smoke-train.mjs"
+    "test:train": "node scripts/smoke-train.mjs",
+    "test:core": "node scripts/test-game-core.mjs",
+    "test:arcade": "node scripts/smoke-arcade.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260920.1",

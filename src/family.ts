@@ -12,7 +12,9 @@ import {
   MISSION_ITEMS,
 } from "./game";
 import { gradeOf, TRAIN_MINUTES_CAP } from "./train";
+import { addDays } from "./game";
 import { history, clampDays, touchStats, type DayStat } from "./stats";
+import { getSettings, grantCredit, saveSettings, playsFor } from "./arcade";
 
 const csvCell = (v: string | number | boolean) => {
   const s = String(v);
@@ -82,6 +84,7 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
           grade: k.birthYear === null ? null : gradeOf(k.birthYear, day),
           training: { sessionsToday: t?.n ?? 0, minutesToday: t?.m ?? 0, correctToday: t?.c ?? 0, totalToday: t?.t ?? 0 },
           state: await childState(env, k.id, familyId, day),
+          plays: await playsFor(env, k.id, familyId, day),
         };
       }),
     );
@@ -100,10 +103,10 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
       .bind(familyId)
       .all();
     const chores = await env.DB.prepare(
-      "SELECT id, label, minutes, xp, active FROM chores WHERE family_id = ? ORDER BY active DESC, created_at, label",
+      "SELECT id, label, minutes, xp, game_plays AS gamePlays, active FROM chores WHERE family_id = ? ORDER BY active DESC, created_at, label",
     )
       .bind(familyId)
-      .all<{ id: string; label: string; minutes: number; xp: number; active: number }>();
+      .all<{ id: string; label: string; minutes: number; xp: number; gamePlays: number; active: number }>();
     return json({
       family: fam,
       day,
@@ -113,8 +116,20 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
         claims: claims.results,
       },
       chores: chores.results.map((c) => ({ ...c, active: !!c.active })),
+      gameSettings: await getSettings(env, familyId),
       limits: { maxStrikes: MAX_STRIKES, missionMinutes: MISSION_MINUTES, missionXp: MISSION_XP, levels: XPT, trainCap: TRAIN_MINUTES_CAP },
     });
+  }
+
+  /* --- hra: nastavení odměn a ruční přidání spuštění --- */
+  if (path === "/game-settings" && req.method === "PATCH") {
+    return json({ ok: true, settings: await saveSettings(env, familyId, await readJson(req)) });
+  }
+  if ((r = path.match(/^\/children\/([\w-]+)\/game-credit$/)) && req.method === "POST") {
+    await childInFamily(r[1]);
+    const plays = int((await readJson(req)).plays, "počet spuštění", 1, 10);
+    await grantCredit(env, r[1], plays, addDays(day, -1), "manual", crypto.randomUUID()); // platí hned dnes
+    return json({ ok: true, plays: await playsFor(env, r[1], familyId, day) }, 201);
   }
 
   /* --- rok narození dítěte (z něj se odvozuje ročník a obtížnost příkladů) --- */
@@ -175,6 +190,7 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
           "INSERT OR IGNORE INTO ledger (id, child_id, kind, amount, earned_day, source, ref) VALUES (?, ?, 'xp', ?, ?, 'mission', ?)",
         ).bind(crypto.randomUUID(), childId, MISSION_XP, mDay, ref),
       ]);
+      await grantCredit(env, childId, (await getSettings(env, familyId)).missionPlays, mDay, "mission", ref);
       await touchStats(env, childId, mDay, day);
       return json({ ok: true });
     }
@@ -200,12 +216,12 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
   /* --- bonusy: schválit / zamítnout --- */
   if ((r = path.match(/^\/claims\/([\w-]+)\/(approve|reject)$/)) && req.method === "POST") {
     const claim = await env.DB.prepare(
-      `SELECT c.id, c.child_id, c.day, c.minutes, c.xp FROM bonus_claims c
+      `SELECT c.id, c.child_id, c.chore_id, c.day, c.minutes, c.xp FROM bonus_claims c
          JOIN memberships m ON m.user_id = c.child_id AND m.family_id = ? AND m.role = 'child'
         WHERE c.id = ? AND c.status = 'pending'`,
     )
       .bind(familyId, r[1])
-      .first<{ id: string; child_id: string; day: string; minutes: number; xp: number }>();
+      .first<{ id: string; child_id: string; chore_id: string; day: string; minutes: number; xp: number }>();
     if (!claim) throw new HttpError(409, "Úkol už není ke schválení");
     const now = new Date().toISOString();
     const status = r[2] === "approve" ? "approved" : "rejected";
@@ -230,6 +246,8 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
         );
       }
       await env.DB.batch(stmts);
+      const gp = await env.DB.prepare("SELECT game_plays AS n FROM chores WHERE id = ?").bind(claim.chore_id).first<{ n: number }>();
+      await grantCredit(env, claim.child_id, gp?.n ?? 0, claim.day, "bonus", claim.id);
       await touchStats(env, claim.child_id, claim.day, day);
       return json({ ok: true, grantedMinutes: minutes });
     }
@@ -266,8 +284,8 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
   if (path === "/chores" && req.method === "POST") {
     const b = await readJson(req);
     const id = crypto.randomUUID();
-    await env.DB.prepare("INSERT INTO chores (id, family_id, label, minutes, xp) VALUES (?, ?, ?, ?, ?)")
-      .bind(id, familyId, text(b.label, "název", 2, 60), int(b.minutes, "minuty", 0, 60), int(b.xp, "XP", 0, 200))
+    await env.DB.prepare("INSERT INTO chores (id, family_id, label, minutes, xp, game_plays) VALUES (?, ?, ?, ?, ?, ?)")
+      .bind(id, familyId, text(b.label, "název", 2, 60), int(b.minutes, "minuty", 0, 60), int(b.xp, "XP", 0, 200), b.gamePlays === undefined ? 0 : int(b.gamePlays, "spuštění hry", 0, 5))
       .run();
     return json({ id }, 201);
   }
@@ -279,6 +297,7 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
     if (b.label !== undefined) { sets.push("label = ?"); vals.push(text(b.label, "název", 2, 60)); }
     if (b.minutes !== undefined) { sets.push("minutes = ?"); vals.push(int(b.minutes, "minuty", 0, 60)); }
     if (b.xp !== undefined) { sets.push("xp = ?"); vals.push(int(b.xp, "XP", 0, 200)); }
+    if (b.gamePlays !== undefined) { sets.push("game_plays = ?"); vals.push(int(b.gamePlays, "spuštění hry", 0, 5)); }
     if (b.active !== undefined) {
       if (typeof b.active !== "boolean") throw new HttpError(400, "Pole „active“ musí být true/false");
       sets.push("active = ?"); vals.push(b.active ? 1 : 0);
