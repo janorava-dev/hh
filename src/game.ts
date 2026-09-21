@@ -5,10 +5,11 @@ import type { Env } from "./index";
 export const MISSION_ITEMS = 5;
 export const MISSION_MINUTES = 30;
 export const MISSION_XP = 40;
-export const BONUS_CAP = 30; // max. bonusových minut za den
 export const MAX_STRIKES = 3;
 
-export const XPT = [0, 100, 240, 420, 640, 900, 1200, 1540, 1920, 2340]; // práh XP pro level 1..10
+// Práh XP pro level 1..10. Jediný zdroj pravdy: server ho posílá klientovi (child.html, parent.html).
+// Při ~120 XP/den vychází level 10 zhruba po 12 týdnech. Žádný denní strop XP ani minut.
+export const XPT = [0, 100, 500, 1100, 2000, 3100, 4400, 6000, 7900, 10000];
 export const levelOf = (xp: number) => XPT.reduce((l, t, i) => (xp >= t ? i + 1 : l), 1);
 
 export const HEROES = ["knight", "wizard", "ninja", "astro", "robot", "fox", "ondatra"];
@@ -69,7 +70,7 @@ export async function childState(env: Env, childId: string, familyId: string, da
   const from = addDays(day, -30);
   await env.DB.prepare("INSERT OR IGNORE INTO mission_days (child_id, day) VALUES (?, ?)").bind(childId, day).run();
 
-  const [minutesRows, xpRow, weekRow, strikeRows, missionRow, approvedRows, claimRows, choreRows, heroRow, bonusGrant] =
+  const [minutesRows, xpRow, weekRow, strikeRows, missionRow, approvedRows, claimRows, choreRows, heroRow] =
     await env.DB.batch([
       env.DB.prepare(
         "SELECT earned_day AS d, SUM(amount) AS a FROM ledger WHERE child_id = ? AND kind = 'minutes' AND earned_day >= ? GROUP BY earned_day",
@@ -92,9 +93,6 @@ export async function childState(env: Env, childId: string, familyId: string, da
         "SELECT id, label, minutes, xp FROM chores WHERE family_id = ? AND active = 1 ORDER BY created_at, label",
       ).bind(familyId),
       env.DB.prepare("SELECT hero, name, equipment FROM heroes WHERE child_id = ?").bind(childId),
-      env.DB.prepare(
-        "SELECT COALESCE(SUM(amount), 0) AS a FROM ledger WHERE child_id = ? AND kind = 'minutes' AND source = 'bonus' AND earned_day = ?",
-      ).bind(childId, day),
     ]);
 
   const minutesBy = new Map((minutesRows.results as { d: string; a: number }[]).map((r) => [r.d, r.a]));
@@ -119,10 +117,8 @@ export async function childState(env: Env, childId: string, familyId: string, da
   const claims = new Map((claimRows.results as { chore_id: string; status: "pending" | "approved" }[]).map((c) => [c.chore_id, c.status]));
   const chores = choreRows.results as { id: string; label: string; minutes: number; xp: number }[];
 
-  const grantedBonus = (bonusGrant.results[0] as { a: number }).a;
   const pendingBonus = chores.filter((c) => claims.get(c.id) === "pending").reduce((s, c) => s + c.minutes, 0);
-  const tomorrowPending =
-    (mission.status === "pending" ? MISSION_MINUTES : 0) + Math.min(pendingBonus, Math.max(0, BONUS_CAP - grantedBonus));
+  const tomorrowPending = (mission.status === "pending" ? MISSION_MINUTES : 0) + pendingBonus;
 
   const approved = new Set((approvedRows.results as { day: string }[]).map((r) => r.day));
   let streak = 0;

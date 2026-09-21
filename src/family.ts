@@ -5,7 +5,7 @@ import {
   childState,
   today,
   isDay,
-  BONUS_CAP,
+  XPT,
   MAX_STRIKES,
   MISSION_MINUTES,
   MISSION_XP,
@@ -92,7 +92,7 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
         claims: claims.results,
       },
       chores: chores.results.map((c) => ({ ...c, active: !!c.active })),
-      limits: { bonusCap: BONUS_CAP, maxStrikes: MAX_STRIKES, missionMinutes: MISSION_MINUTES, missionXp: MISSION_XP },
+      limits: { maxStrikes: MAX_STRIKES, missionMinutes: MISSION_MINUTES, missionXp: MISSION_XP, levels: XPT },
     });
   }
 
@@ -157,12 +157,7 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
       .run();
     if (!upd.meta.changes) throw new HttpError(409, "Úkol už není ke schválení");
     if (status === "approved") {
-      const granted = await env.DB.prepare(
-        "SELECT COALESCE(SUM(amount), 0) AS a FROM ledger WHERE child_id = ? AND kind = 'minutes' AND source = 'bonus' AND earned_day = ?",
-      )
-        .bind(claim.child_id, claim.day)
-        .first<{ a: number }>();
-      const minutes = Math.min(claim.minutes, Math.max(0, BONUS_CAP - (granted?.a ?? 0)));
+      const minutes = claim.minutes; // bez denního stropu
       const stmts = [
         env.DB.prepare(
           "INSERT OR IGNORE INTO ledger (id, child_id, kind, amount, earned_day, source, ref) VALUES (?, ?, 'xp', ?, ?, 'bonus', ?)",

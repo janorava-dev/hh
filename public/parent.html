@@ -58,6 +58,7 @@ async function load() {
     const [g, f] = await Promise.all([hh.api("/api/family/" + m.familyId + "/game"), hh.api("/api/family/" + m.familyId)]);
     return { id: m.familyId, g, members: f.members };
   }));
+  if (FAMS[0]) HHG.setXPT(FAMS[0].g.limits.levels);
   render();
 }
 
@@ -113,7 +114,7 @@ function render() {
     '<div class="eyebrow" style="margin-top:6px">Rodina</div><h1>' + esc(F.g.family.name) + "</h1>" +
     queueHTML(F) +
     '<section class="panel"><h2>Děti</h2>' + (F.g.children.length ? '<div class="kids">' + F.g.children.map((c) => kidHTML(F, c)).join("") + "</div>" : '<p class="cap">V rodině zatím není žádné dítě. Připojí ho správce.</p>') + "</section>" +
-    '<section class="panel"><h2>Bonusové úkoly</h2><p class="cap">Dítě je splní navíc a vy je schválíte. Bonusové minuty platí od zítřka, nejvýš ' + F.g.limits.bonusCap + " min za den.</p>" +
+    '<section class="panel"><h2>Bonusové úkoly</h2><p class="cap">Dítě je splní navíc a vy je schválíte. Bonusové minuty i XP se připíšou po schválení, minuty platí od zítřka. Bez denního stropu.</p>" +
     F.g.chores.map((c) => choreHTML(F, c)).join("") +
     '<form class="chore newchore" data-f="' + F.id + '" data-new="1"><div class="field"><label>Nový úkol</label><input type="text" name="label" maxlength="60" placeholder="např. Ustlat postel" required></div>' +
     '<div class="field"><label>Minuty</label><input type="number" name="minutes" value="5" min="0" max="60" required></div>' +

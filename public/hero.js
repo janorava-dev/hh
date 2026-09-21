@@ -9,7 +9,8 @@ const eyes=(y,dx,r)=>`<circle cx="${100-dx}" cy="${y}" r="${r}" fill="#fff"/><ci
 const skin='#F3C9A5';
 
 /* ---------- ekonomika ---------- */
-const XPT=[0,100,240,420,640,900,1200,1540,1920,2340];   // práh XP pro level 1..10
+const XPT=[0,100,500,1100,2000,3100,4400,6000,7900,10000];   // práh XP pro level 1..10; skutečné hodnoty posílá server (setXPT)
+const setXPT=a=>{if(Array.isArray(a)&&a.length&&a.every(Number.isFinite)){XPT.length=0;XPT.push(...a)}};
 const FORMS=['Učeň','Bojovník','Šampion','Legenda'];
 const lvlOf=xp=>{let l=1;XPT.forEach((t,i)=>{if(xp>=t)l=i+1});return l};
 const tierOf=l=>l>=10?4:l>=6?3:l>=3?2:1;
@@ -101,5 +102,5 @@ const ic=(n,c='')=>`<svg class="ic ${c}" viewBox="0 0 24 24" fill="none" stroke=
 const shield=cr=>`<svg class="sh ${cr?'cr':''}" viewBox="0 0 40 46" aria-hidden="true"><path class="sf" d="M20 2 36 8v14c0 11-7 19-16 22C11 41 4 33 4 22V8z"/>${cr?'<path class="sc" d="M21 5 16 17l7 5-8 10 5 11"/>':`<polygon class="ss" points="${star(20,23,9,3.800)}"/>`}</svg>`;
 
 
-window.HHG={XPT,FORMS,lvlOf,tierOf,SLOTS,HEROES,hero,HEAD_VIEW,eqFor,ic,IC,shield,star,esc,dny};
+window.HHG={XPT,setXPT,FORMS,lvlOf,tierOf,SLOTS,HEROES,hero,HEAD_VIEW,eqFor,ic,IC,shield,star,esc,dny};
 })();

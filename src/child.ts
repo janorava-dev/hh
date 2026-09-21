@@ -1,7 +1,7 @@
 import { HttpError, json, readJson, text } from "./http";
 import type { AuthUser } from "./auth";
 import type { Env } from "./index";
-import { childState, today, MISSION_ITEMS, HEROES, SLOTS, levelOf } from "./game";
+import { childState, today, MISSION_ITEMS, HEROES, SLOTS, levelOf, XPT } from "./game";
 
 const isUnique = (e: unknown) => e instanceof Error && /UNIQUE|constraint/i.test(e.message);
 
@@ -25,6 +25,7 @@ export async function child(req: Request, env: Env, url: URL, me: AuthUser): Pro
       .all<{ id: string; displayName: string; hero: string | null; name: string | null; equipment: string | null; xp: number }>();
     return json({
       state: st,
+      levels: XPT,
       displayName: me.displayName,
       familyName: membership.familyName,
       siblings: siblings.results.map((s) => ({

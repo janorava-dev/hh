@@ -23,7 +23,7 @@ Odměna: **30 min** hraní a **40 XP**. Rodič misi schvaluje.
 
 ## Bonusové úkoly
 
-Navíc za koš, myčku, prádlo apod. Každý má minuty a XP. Bonusové minuty jsou omezené na **30 min za den**.
+Navíc za koš, myčku, prádlo apod. Každý má minuty a XP. **Bez denního stropu** minut ani XP: co rodič schválí, to se připíše celé (dítě by strop demotivoval).
 
 ## Kdy minuty platí
 
@@ -51,7 +51,7 @@ Dítě si vybírá z nabídky (Rytíř, Čaroděj, Ninja, Kosmonaut, Robot, Liš
 | 9 | | aura |
 | 10 | Legenda | |
 
-Práh XP pro levely 1–10: 0, 100, 240, 420, 640, 900, 1200, 1540, 1920, 2340.
+Práh XP pro levely 1–10: 0, 100, 500, 1100, 2000, 3100, 4400, 6000, 7900, 10000 (pomalejší křivka: při ~120 XP/den je level 10 asi po 12 týdnech). Prahy jsou na jednom místě, v `src/game.ts` (`XPT`); server je posílá klientovi.
 
 ## Otevřené
 

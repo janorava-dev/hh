@@ -54,6 +54,10 @@ setDay("2026-10-01", parent, kid, kid2, outsider);
 r = await kid.req("GET", "/api/me/game");
 check("dítě vidí stav", r.status === 200 && r.data.state.mission.status === "open" && r.data.state.usable === 0 && r.data.state.bonus.length === 3, JSON.stringify(r.data));
 check("sourozenec je v odpovědi", r.data.siblings.length === 1);
+check("server posílá prahy levelů (pomalejší křivka)", Array.isArray(r.data.levels) && r.data.levels.length === 10 && r.data.levels[2] === 500 && r.data.levels[9] === 10000, JSON.stringify(r.data.levels));
+r = await parent.req("GET", `/api/family/${fam}/game`);
+check("rodič dostává prahy levelů a žádný strop bonusů", r.data.limits.levels[9] === 10000 && r.data.limits.bonusCap === undefined, JSON.stringify(r.data.limits));
+r = await kid.req("GET", "/api/me/game");
 for (let i = 0; i < 4; i++) r = await kid.req("POST", "/api/me/mission", { index: i, checked: true });
 check("po 4 úkolech mise pořád otevřená", r.data.state.mission.status === "open");
 r = await kid.req("POST", "/api/me/mission", { index: 9, checked: true });
@@ -97,7 +101,7 @@ check("bonus podruhé 409", r.status === 409);
 r = await kid.req("GET", "/api/me/game");
 check("den 1: dnes nic, zítra 35 min (30 mise + 5 bonus), 60 XP, série 1", r.data.state.usable === 0 && r.data.state.tomorrow === 35 && r.data.state.xp === 60 && r.data.state.streak === 1, JSON.stringify(r.data.state));
 
-/* ---- strop bonusů 30 min/den ---- */
+/* ---- bonusy bez denního stropu ---- */
 const mkChore = async (label, minutes) => (await parent.req("POST", `/api/family/${fam}/chores`, { label, minutes, xp: 10 })).data.id;
 const big1 = await mkChore("Velký A", 20), big2 = await mkChore("Velký B", 20);
 await kid.req("POST", "/api/me/bonus", { choreId: big1 });
@@ -105,20 +109,20 @@ await kid.req("POST", "/api/me/bonus", { choreId: big2 });
 const q = (await parent.req("GET", `/api/family/${fam}/game`)).data.queue.claims;
 const a1 = await parent.req("POST", `/api/family/${fam}/claims/${q.find((c) => c.label === "Velký A").id}/approve`);
 const a2 = await parent.req("POST", `/api/family/${fam}/claims/${q.find((c) => c.label === "Velký B").id}/approve`);
-check("strop bonusů: 5 + 20 = 25, další 20 se ořízne na 5", a1.data.grantedMinutes === 20 && a2.data.grantedMinutes === 5, JSON.stringify([a1.data, a2.data]));
+check("bez stropu: 5 + 20 + 20 minut se připíše celé", a1.data.grantedMinutes === 20 && a2.data.grantedMinutes === 20, JSON.stringify([a1.data, a2.data]));
 await parent.req("PATCH", `/api/family/${fam}/chores/${big1}`, { active: false });
 await parent.req("PATCH", `/api/family/${fam}/chores/${big2}`, { active: false });
 
 /* ---- den 2: minuty platí, 3 trhliny ---- */
 setDay("2026-10-02", parent, kid, kid2, outsider);
 r = await kid.req("GET", "/api/me/game");
-check("den 2: k dispozici 60 min (30 + 30 bonus)", r.data.state.usable === 60 && r.data.state.base === 60 && !r.data.state.regen, JSON.stringify(r.data.state));
+check("den 2: k dispozici 75 min (30 mise + 45 bonusů)", r.data.state.usable === 75 && r.data.state.base === 75 && !r.data.state.regen, JSON.stringify(r.data.state));
 for (let i = 0; i < 3; i++) r = await parent.req("POST", `/api/family/${fam}/children/${kid.id}/strikes`, { reason: "Odmlouvání" });
 check("3. trhlina OK", r.status === 201 && r.data.count === 3);
 r = await parent.req("POST", `/api/family/${fam}/children/${kid.id}/strikes`, { reason: "Odmlouvání" });
 check("4. trhlina = 409", r.status === 409);
 r = await kid.req("GET", "/api/me/game");
-check("den 2 po 3 trhlinách: hrát ještě může, ale zítra je regenerace", r.data.state.usable === 60 && r.data.state.regenTomorrow && r.data.state.strikes.length === 3);
+check("den 2 po 3 trhlinách: hrát ještě může, ale zítra je regenerace", r.data.state.usable === 75 && r.data.state.regenTomorrow && r.data.state.strikes.length === 3);
 r = await parent.req("DELETE", `/api/family/${fam}/children/${kid.id}/strikes/last`);
 r = await kid.req("GET", "/api/me/game");
 check("vrácení trhliny", r.data.state.strikes.length === 2 && !r.data.state.regenTomorrow);

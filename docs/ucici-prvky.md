@@ -33,7 +33,7 @@ Server vygeneruje příklady a drží správné odpovědi. Dítě posílá jen o
 
 **Odměna (návrh):**
 - Sada 10 příkladů, úspěšnost aspoň 80 %: 5 min + 15 XP.
-- Zvláštní denní strop z tréninku, např. 15 min, samostatný od bonusového stropu 30 min.
+- Zvláštní denní strop z tréninku, např. 15 min, samostatný od bonusů (ty žádný denní strop nemají).
 - Dál platí pravidlo „minuty od zítřka“.
 - Rodič nastavuje úroveň, strop a zapnutí pro každé dítě.
 
@@ -41,7 +41,7 @@ Server vygeneruje příklady a drží správné odpovědi. Dítě posílá jen o
 
 ### B) Externí aplikace ověřené rodičem (funguje už dnes)
 
-Bonusové úkoly s minutami už existují. Rodič může přidat např. „Duolingo lekce“, „Umíme to 15 minut“, „Čtení 20 minut“. Dítě odešle, rodič schválí podle přehledu v dané aplikaci. Bez programování, jen sdílí bonusový strop 30 min/den.
+Bonusové úkoly s minutami už existují. Rodič může přidat např. „Duolingo lekce“, „Umíme to 15 minut“, „Čtení 20 minut“. Dítě odešle, rodič schválí podle přehledu v dané aplikaci. Bez programování a bez denního stropu.
 
 ## Navržené kroky
 

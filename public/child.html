@@ -209,7 +209,7 @@ body{margin:0}
 (()=>{
 const {XPT,FORMS,lvlOf,tierOf,SLOTS,HEROES,hero,HEAD_VIEW,eqFor,ic,shield,esc,dny}=HHG;
 const $=s=>document.querySelector(s);
-const MIN_M=30,XP_M=40,BON_CAP=30,CAP=60;
+const MIN_M=30,XP_M=40,CAP=60;
 const MISSIONS=[['bed','V posteli do 20:30'],['tooth','Vyčištěné zuby'],['desk','Uklizený stůl'],['bag','Věci do školy připravené'],['door','Nic dětského mimo pokojík']];
 const choreIc=l=>/koš|odpad/i.test(l)?'bin':/myčk|nádob|umýt|umyt/i.test(l)?'dish':/prád|oblečen/i.test(l)?'shirt':'check';
 const S={tab:'home',g:null,fk:null};
@@ -252,7 +252,7 @@ function homeView(k,st){
   h+=`<section class="flat"><div class="eyebrow">Bonusové úkoly</div>${st.bonus.length?st.bonus.map(b=>
     `<div class="bonus"><span class="ico">${ic(choreIc(b.label))}</span><div class="txt"><b>${esc(b.label)}</b><small>+${b.minutes} min · +${b.xp} XP</small></div>
     ${b.status==='open'?`<button class="btn sm" data-act="bonus" data-v="${b.id}">Hotovo</button>`:b.status==='pending'?`<span class="tag pend">Čeká na rodiče</span>`:`<span class="tag ok">Splněno</span>`}</div>`).join(''):'<p class="cap">Rodiče zatím žádné bonusové úkoly nepřidali.</p>'}
-    <p class="cap">Minuty z bonusů se připíšou na zítra, nejvýš ${BON_CAP} min za den.</p></section>`;
+    <p class="cap">Minuty z bonusů se připíšou na zítra.</p></section>`;
   return h;
 }
 function heroView(k,st){
@@ -293,7 +293,7 @@ function checkLevel(){
   try{const prev=+localStorage.getItem(key);if(prev&&L>prev){const sl=SLOTS.find(x=>x.lvl===L);toast(`Nový level ${L}!${sl?' Odemčeno: '+sl.name+'.':''}${[3,6,10].includes(L)?' Nová forma: '+FORMS[tierOf(L)-1]+'!':''}`)}localStorage.setItem(key,String(L))}catch(e){}
 }
 async function load(quiet){
-  try{S.g=await hh.api('/api/me/game');checkLevel();if(!(document.activeElement&&document.activeElement.id==='nm'))render()}
+  try{S.g=await hh.api('/api/me/game');HHG.setXPT(S.g.levels);checkLevel();if(!(document.activeElement&&document.activeElement.id==='nm'))render()}
   catch(e){if(e.status===401){location.href='/';return}if(!quiet)$('#app').innerHTML='<p class="cap">'+esc(e.message)+'</p>'}
 }
 async function act(fn,ok){
