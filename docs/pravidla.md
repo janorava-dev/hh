@@ -38,7 +38,7 @@ Navíc za koš, myčku, prádlo apod. Každý má minuty a XP. Bonusové minuty 
 
 ## Hrdinové
 
-Dítě si vybírá z nabídky (Rytíř, Čaroděj, Ninja, Kosmonaut, Robot, Liška). XP odemyká:
+Dítě si vybírá z nabídky (Rytíř, Čaroděj, Ninja, Kosmonaut, Robot, Liška, SuperOndatra). XP odemyká:
 
 | Level | Forma | Odemyká |
 |---|---|---|

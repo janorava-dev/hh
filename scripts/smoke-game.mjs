@@ -149,6 +149,8 @@ check("druhé dítě není ovlivněno", r.data.state.usable === 0 && r.data.stat
 setDay("2026-10-04", kid);
 r = await kid.req("PUT", "/api/me/hero", { hero: "wizard", name: "Blesk", equipment: { cape: "blue" } });
 check("hrdina: level 2 odemyká plášť", r.status === 200 && r.data.state.hero.hero === "wizard" && r.data.state.hero.equipment.cape === "blue", JSON.stringify(r.data));
+r = await kid.req("PUT", "/api/me/hero", { hero: "ondatra", name: "SuperOndatra", equipment: { cape: "red" } });
+check("hrdina SuperOndatra jde vybrat", r.status === 200 && r.data.state.hero.hero === "ondatra", JSON.stringify(r.data));
 r = await kid.req("PUT", "/api/me/hero", { hero: "wizard", name: "Blesk", equipment: { tool: "broom" } });
 check("nástroj je zamčený do levelu 5 (403)", r.status === 403);
 r = await kid.req("PUT", "/api/me/hero", { hero: "dragonzord", name: "X", equipment: {} });

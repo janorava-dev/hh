@@ -11,7 +11,7 @@ export const MAX_STRIKES = 3;
 export const XPT = [0, 100, 240, 420, 640, 900, 1200, 1540, 1920, 2340]; // práh XP pro level 1..10
 export const levelOf = (xp: number) => XPT.reduce((l, t, i) => (xp >= t ? i + 1 : l), 1);
 
-export const HEROES = ["knight", "wizard", "ninja", "astro", "robot", "fox"];
+export const HEROES = ["knight", "wizard", "ninja", "astro", "robot", "fox", "ondatra"];
 export const SLOTS: Record<string, { lvl: number; opts: string[] }> = {
   cape: { lvl: 2, opts: ["red", "blue", "gold"] },
   neck: { lvl: 3, opts: ["scarf", "medal", "gem"] },
