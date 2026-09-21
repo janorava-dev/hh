@@ -22,7 +22,7 @@
 
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--ink);font:600 15px/1.45 'Nunito','Trebuchet MS',system-ui,sans-serif;-webkit-font-smoothing:antialiased}
-h1,h2,h3,.disp{font-family:'Lilita One','Trebuchet MS',system-ui,sans-serif;font-weight:400;letter-spacing:.2px;margin:0;text-wrap:balance}
+h1,h2,h3,.disp{font-family:'Paytone One','Trebuchet MS',system-ui,sans-serif;font-weight:400;letter-spacing:.2px;margin:0;text-wrap:balance}
 h1{font-size:30px} h2{font-size:24px} h3{font-size:20px}
 p{margin:0}
 button,input,select{font:inherit;color:inherit}
