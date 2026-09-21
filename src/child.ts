@@ -2,6 +2,8 @@ import { HttpError, json, readJson, text } from "./http";
 import type { AuthUser } from "./auth";
 import type { Env } from "./index";
 import { childState, today, MISSION_ITEMS, HEROES, SLOTS, levelOf, XPT } from "./game";
+import { train } from "./train";
+import { history, clampDays, touchStats } from "./stats";
 
 const isUnique = (e: unknown) => e instanceof Error && /UNIQUE|constraint/i.test(e.message);
 
@@ -12,6 +14,13 @@ export async function child(req: Request, env: Env, url: URL, me: AuthUser): Pro
   const day = today(req, env);
   const path = url.pathname.replace(/^\/api\/me/, "");
   const state = async () => json({ state: await childState(env, me.id, membership.familyId, day) });
+
+  if (path.startsWith("/train")) return train(req, env, url, me, day);
+
+  if (path === "/history" && req.method === "GET") {
+    const days = clampDays(url.searchParams.get("days"), 14, 180);
+    return json({ days: await history(env, me.id, day, days) });
+  }
 
   if (path === "/game" && req.method === "GET") {
     const st = await childState(env, me.id, membership.familyId, day);
@@ -58,6 +67,7 @@ export async function child(req: Request, env: Env, url: URL, me: AuthUser): Pro
       .bind(JSON.stringify(items), complete ? "pending" : "open", complete ? new Date().toISOString() : null, me.id, day)
       .run();
     if (!res.meta.changes) throw new HttpError(409, "Mise je už odeslaná rodiči");
+    await touchStats(env, me.id, day, day);
     return state();
   }
 

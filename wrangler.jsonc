@@ -17,5 +17,7 @@
     { "binding": "DB", "database_name": "hh", "database_id": "f501cdb3-5559-4ff7-960c-97775238fe4d", "migrations_dir": "migrations" }
   ],
   "routes": [{ "pattern": "hh.oliv.cz", "custom_domain": true }],
+  // Noční přepočet historie. 22:10 a 23:10 UTC: jedno z toho vychází těsně po půlnoci v Praze v létě i v zimě.
+  "triggers": { "crons": ["10 22 * * *", "10 23 * * *"] },
   "observability": { "enabled": true }
 }

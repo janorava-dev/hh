@@ -3,6 +3,7 @@ import { getUser, requireUser, publicUser, login, logout, changePassword, type A
 import { admin } from "./admin";
 import { child } from "./child";
 import { family } from "./family";
+import { refreshAll } from "./stats";
 
 export interface Env {
   ASSETS: Fetcher;
@@ -55,6 +56,11 @@ export default {
       console.error(e);
       return json({ error: "Chyba serveru" }, 500);
     }
+  },
+
+  /** Noční přepočet denních souhrnů (cron v wrangler.jsonc). */
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(refreshAll(env));
   },
 } satisfies ExportedHandler<Env>;
 

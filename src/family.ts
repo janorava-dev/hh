@@ -11,8 +11,15 @@ import {
   MISSION_XP,
   MISSION_ITEMS,
 } from "./game";
+import { gradeOf, TRAIN_MINUTES_CAP } from "./train";
+import { history, clampDays, touchStats, type DayStat } from "./stats";
 
-const int = (v: unknown, label: string, min: number, max: number) => {
+const csvCell = (v: string | number | boolean) => {
+  const s = String(v);
+  return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+};
+
+const int =(v: unknown, label: string, min: number, max: number) => {
   if (typeof v !== "number" || !Number.isInteger(v) || v < min || v > max) {
     throw new HttpError(400, `Pole „${label}“ musí být celé číslo ${min}–${max}`);
   }
@@ -57,12 +64,26 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
 
   if (path === "/game" && req.method === "GET") {
     const kids = await env.DB.prepare(
-      "SELECT u.id, u.display_name AS name FROM memberships m JOIN users u ON u.id = m.user_id WHERE m.family_id = ? AND m.role = 'child' AND u.disabled = 0 ORDER BY u.display_name",
+      "SELECT u.id, u.display_name AS name, u.birth_year AS birthYear FROM memberships m JOIN users u ON u.id = m.user_id WHERE m.family_id = ? AND m.role = 'child' AND u.disabled = 0 ORDER BY u.display_name",
     )
       .bind(familyId)
-      .all<{ id: string; name: string }>();
+      .all<{ id: string; name: string; birthYear: number | null }>();
     const children = await Promise.all(
-      kids.results.map(async (k) => ({ id: k.id, displayName: k.name, state: await childState(env, k.id, familyId, day) })),
+      kids.results.map(async (k) => {
+        const t = await env.DB.prepare(
+          "SELECT COUNT(*) AS n, COALESCE(SUM(minutes_awarded), 0) AS m, COALESCE(SUM(correct), 0) AS c, COALESCE(SUM(total), 0) AS t FROM train_sessions WHERE child_id = ? AND day = ? AND status = 'done'",
+        )
+          .bind(k.id, day)
+          .first<{ n: number; m: number; c: number; t: number }>();
+        return {
+          id: k.id,
+          displayName: k.name,
+          birthYear: k.birthYear,
+          grade: k.birthYear === null ? null : gradeOf(k.birthYear, day),
+          training: { sessionsToday: t?.n ?? 0, minutesToday: t?.m ?? 0, correctToday: t?.c ?? 0, totalToday: t?.t ?? 0 },
+          state: await childState(env, k.id, familyId, day),
+        };
+      }),
     );
     const missions = await env.DB.prepare(
       `SELECT d.child_id AS childId, u.display_name AS childName, d.day, d.items FROM mission_days d
@@ -92,8 +113,44 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
         claims: claims.results,
       },
       chores: chores.results.map((c) => ({ ...c, active: !!c.active })),
-      limits: { maxStrikes: MAX_STRIKES, missionMinutes: MISSION_MINUTES, missionXp: MISSION_XP, levels: XPT },
+      limits: { maxStrikes: MAX_STRIKES, missionMinutes: MISSION_MINUTES, missionXp: MISSION_XP, levels: XPT, trainCap: TRAIN_MINUTES_CAP },
     });
+  }
+
+  /* --- rok narození dítěte (z něj se odvozuje ročník a obtížnost příkladů) --- */
+  if ((r = path.match(/^\/children\/([\w-]+)$/)) && req.method === "PATCH") {
+    await childInFamily(r[1]);
+    const b = await readJson(req);
+    const year = new Date(`${day}T12:00:00Z`).getUTCFullYear();
+    const birthYear = b.birthYear === null ? null : int(b.birthYear, "rok narození", 2000, year - 4);
+    await env.DB.prepare("UPDATE users SET birth_year = ? WHERE id = ?").bind(birthYear, r[1]).run();
+    return json({ ok: true, birthYear, grade: birthYear === null ? null : gradeOf(birthYear, day) });
+  }
+
+  /* --- historie: denní souhrny dětí, na požádání jako CSV --- */
+  if (path === "/history" && req.method === "GET") {
+    const days = clampDays(url.searchParams.get("days"), 30, 365);
+    const kids = await env.DB.prepare(
+      "SELECT u.id, u.display_name AS name FROM memberships m JOIN users u ON u.id = m.user_id WHERE m.family_id = ? AND m.role = 'child' AND u.disabled = 0 ORDER BY u.display_name",
+    )
+      .bind(familyId)
+      .all<{ id: string; name: string }>();
+    const children = await Promise.all(kids.results.map(async (k) => ({ id: k.id, displayName: k.name, days: await history(env, k.id, day, days) })));
+    if (url.searchParams.get("format") === "csv") {
+      const head = ["Dítě", "Den", "XP získané", "Minuty získané (platí od dalšího dne)", "Minuty k dispozici", "Z toho přenesené", "Minuty zamčené (přesunuté)", "Den regenerace", "Trhliny štítu", "Mise", "Úkolů mise hotovo", "Bonusy schválené", "Sady příkladů", "Správně", "Odpovědí", "XP celkem", "Level"];
+      const rows = children.flatMap((c) =>
+        c.days.map((d: DayStat) => [c.displayName, d.day, d.xpEarned, d.minutesEarned, d.minutesUsable, d.minutesCarry, d.minutesLocked, d.regen ? "ano" : "ne", d.strikes, d.missionStatus, d.missionDone, d.bonusDone, d.trainSessions, d.trainCorrect, d.trainTotal, d.xpTotal, d.level]),
+      );
+      const csv = "﻿" + [head, ...rows].map((r2) => r2.map(csvCell).join(";")).join("\r\n") + "\r\n";
+      return new Response(csv, {
+        headers: {
+          "content-type": "text/csv; charset=utf-8",
+          "content-disposition": `attachment; filename="household-hero-historie-${day}.csv"`,
+          "cache-control": "no-store",
+        },
+      });
+    }
+    return json({ family: fam, day, children });
   }
 
   /* --- mise: schválit / vrátit --- */
@@ -118,6 +175,7 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
           "INSERT OR IGNORE INTO ledger (id, child_id, kind, amount, earned_day, source, ref) VALUES (?, ?, 'xp', ?, ?, 'mission', ?)",
         ).bind(crypto.randomUUID(), childId, MISSION_XP, mDay, ref),
       ]);
+      await touchStats(env, childId, mDay, day);
       return json({ ok: true });
     }
     // vrátit: rodič označí, které úkoly nejsou hotové
@@ -135,6 +193,7 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
     await env.DB.prepare("UPDATE mission_days SET items = ?, status = 'open', submitted_at = NULL WHERE child_id = ? AND day = ? AND status = 'pending'")
       .bind(JSON.stringify(items), childId, mDay)
       .run();
+    await touchStats(env, childId, mDay, day);
     return json({ ok: true });
   }
 
@@ -171,6 +230,7 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
         );
       }
       await env.DB.batch(stmts);
+      await touchStats(env, claim.child_id, claim.day, day);
       return json({ ok: true, grantedMinutes: minutes });
     }
     return json({ ok: true });
@@ -187,6 +247,7 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
     await env.DB.prepare("INSERT INTO strikes (id, child_id, day, reason, created_by) VALUES (?, ?, ?, ?, ?)")
       .bind(crypto.randomUUID(), r[1], day, reason, me.id)
       .run();
+    await touchStats(env, r[1], day, day);
     return json({ ok: true, count: (count?.n ?? 0) + 1 }, 201);
   }
 
@@ -197,6 +258,7 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
     )
       .bind(r[1], day)
       .run();
+    await touchStats(env, r[1], day, day);
     return json({ ok: true });
   }
 

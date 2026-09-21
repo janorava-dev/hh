@@ -11,7 +11,9 @@
     "db:migrate:remote": "wrangler d1 migrations apply hh --remote",
     "create-superadmin": "node scripts/create-superadmin.mjs",
     "test:smoke": "node scripts/smoke-test.mjs",
-    "test:game": "node scripts/smoke-game.mjs"
+    "test:game": "node scripts/smoke-game.mjs",
+    "test:pages": "node scripts/check-pages.mjs",
+    "test:train": "node scripts/smoke-train.mjs"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^5.20260920.1",

@@ -96,7 +96,8 @@ const IC={
  key:'<circle cx="8" cy="12" r="4"/><path d="M12 12h9M18 12v3M15 12v2"/>',
  check:'<path d="M5 12.500l4.500 4.500L19 7"/>',
  x:'<path d="M6 6l12 12M18 6L6 18"/>',
- clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>'
+ clock:'<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+ calc:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 12h.01M12 12h.01M16 12h.01M8 16h.01M12 16h.01M16 16h.01"/>'
 };
 const ic=(n,c='')=>`<svg class="ic ${c}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
 const shield=cr=>`<svg class="sh ${cr?'cr':''}" viewBox="0 0 40 46" aria-hidden="true"><path class="sf" d="M20 2 36 8v14c0 11-7 19-16 22C11 41 4 33 4 22V8z"/>${cr?'<path class="sc" d="M21 5 16 17l7 5-8 10 5 11"/>':`<polygon class="ss" points="${star(20,23,9,3.800)}"/>`}</svg>`;

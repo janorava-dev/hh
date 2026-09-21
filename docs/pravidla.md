@@ -56,3 +56,18 @@ Práh XP pro levely 1–10: 0, 100, 500, 1100, 2000, 3100, 4400, 6000, 7900, 100
 ## Otevřené
 
 - Vynucení času na telefonech (Family Link nemá oficiální API) – rozhodnout později.
+
+## Trénink počítání
+
+- Rodič u dítěte vyplní **rok narození**. Z něj se odvodí ročník (školní rok začíná v září: dítě narozené 2018 je od 9/2026 ve 3. třídě) a podle ročníku se generují příklady.
+- Sada má **10 příkladů**. Server příklady vygeneruje a drží správné odpovědi, dítě posílá odpovědi po jedné a hned vidí, jestli to sedí.
+- Úspěšnost **aspoň 80 %**: **+5 min** (od zítřka) a **+15 XP**. Úspěšnost 50–79 %: jen +5 XP. Pod 50 %: nic.
+- **Strop 15 min za den** z tréninku. Po jeho dosažení sady dál dávají XP. Strop XP není.
+- Sada odpovězená příliš rychle (méně než 12 s celkem) se nepočítá.
+- Obtížnost: 1. třída sčítání do 20, 2. do 100 a malá násobilka, 3. násobilka a dělení, 4. písemné počty a zbytek po dělení, 5. desetinná čísla, zlomky, násobení dvojciferných, 6.+ procenta a záporná čísla. Zadání obsahuje i pár slovních úloh.
+
+## Historie
+
+- Pro každé dítě a den se ukládá souhrn (`daily_stats`): získané XP a minuty, minuty k dispozici, přenesené a zamčené, trhliny, mise, bonusy, trénink, XP celkem a level.
+- Souhrn se přepočítává při každé změně, při zobrazení historie a v noci (cron). Zdrojem pravdy zůstávají účetní kniha, trhliny, mise a trénink.
+- Rodič vidí historii na stránce Rodič a může ji stáhnout jako CSV (středník, UTF-8 s BOM, otevře se v Excelu). Dítě vidí posledních 14 dní v záložce Družina.

@@ -28,6 +28,8 @@ npm run dev                           # http://localhost:8787
 echo ALLOW_TEST_DAY=1 > .dev.vars     # jen lokálně: testy smí přepsat den hlavičkou x-test-day
 npm run test:smoke                    # v druhém terminálu, když běží dev server
 npm run test:game                     # herní smyčka: mise, bonusy, trhliny, přenos minut
+npm run test:train                    # trénink počítání, rok narození, historie a CSV
+npm run test:pages                    # syntaxe skriptů ve stránkách (spouštět před každým nasazením)
 ```
 
 ## Nasazení (jednorázově)

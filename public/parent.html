@@ -82,6 +82,49 @@ function queueHTML(F) {
     (items.length ? '<div class="q">' + items.join("") + "</div>" : '<p class="cap">Nic nečeká. Jakmile dítě odešle misi nebo bonus, objeví se tady.</p>') + "</section>";
 }
 
+function birthHTML(F, c) {
+  const y = Number(F.g.day.slice(0, 4)), opts = ['<option value="">nevyplněno</option>'];
+  for (let b = y - 5; b >= y - 16; b--) opts.push('<option value="' + b + '"' + (c.birthYear === b ? " selected" : "") + ">" + b + "</option>");
+  const t = c.training;
+  return '<div class="inline"><div class="field" style="flex:0 1 170px"><label>Rok narození</label><select data-birth data-f="' + F.id + '" data-c="' + c.id + '">' + opts.join("") + "</select></div>" +
+    '<span class="pill">' + (c.grade ? c.grade + ". třída · počítání" : "Bez roku narození se počítání nespustí") + "</span>" +
+    (c.grade ? '<span class="pill">Trénink dnes: ' + t.sessionsToday + " sad, " + t.minutesToday + "/" + F.g.limits.trainCap + " min" + (t.totalToday ? ", " + t.correctToday + "/" + t.totalToday + " správně" : "") + "</span>" : "") + "</div>";
+}
+
+const HIST = {}; // id rodiny -> { days, data, loading }
+const MSTAT = { none: "–", open: "rozdělaná", pending: "čeká", approved: "schválená" };
+function histHTML(F) {
+  const h = HIST[F.id] || (HIST[F.id] = { days: 30, data: null, loading: false });
+  let body = "";
+  if (h.loading) body = '<p class="cap">Načítám…</p>';
+  else if (h.data) {
+    body = h.data.children.map((c) => {
+      const d = c.days, sum = (k) => d.reduce((a, x) => a + x[k], 0);
+      const rows = [...d].reverse().map((x) => {
+        const lab = new Date(x.day + "T12:00:00").toLocaleDateString("cs-CZ", { weekday: "short", day: "numeric", month: "numeric" });
+        return "<tr><td>" + esc(lab) + "</td><td><b>" + x.xpEarned + "</b></td><td>" + x.minutesEarned + "</td><td>" +
+          (x.regen ? '<span class="pill bad">regenerace</span>' : x.minutesUsable + (x.minutesCarry ? " (z toho " + x.minutesCarry + " přeneseno)" : "")) +
+          "</td><td>" + (x.strikes || "–") + "</td><td>" + MSTAT[x.missionStatus] + "</td><td>" +
+          (x.trainSessions ? x.trainSessions + "× (" + x.trainCorrect + "/" + x.trainTotal + ")" : "–") + "</td></tr>";
+      }).join("");
+      return '<div class="q"><h3>' + esc(c.displayName) + '</h3><div class="stat"><span class="pill ok">' + sum("xpEarned") + " XP</span><span class=\"pill\">" + sum("minutesEarned") +
+        " min získáno</span><span class=\"pill\">" + d.filter((x) => x.missionStatus === "approved").length + "× mise</span><span class=\"pill\">" + sum("strikes") + " trhlin</span><span class=\"pill\">" + sum("trainSessions") + " sad příkladů</span></div>" +
+        '<div class="tablewrap"><table><thead><tr><th>Den</th><th>XP</th><th>Minuty získané</th><th>K dispozici</th><th>Trhliny</th><th>Mise</th><th>Trénink</th></tr></thead><tbody>' + rows + "</tbody></table></div></div>";
+    }).join("");
+  }
+  return '<section class="panel"><h2>Historie</h2><p class="cap">Denní souhrny XP a minut se ukládají každý den, i za dny bez aktivity. „Minuty získané“ platí až od dalšího dne.</p>' +
+    '<div class="inline"><div class="field" style="flex:0 1 210px"><label>Období</label><select data-histdays data-f="' + F.id + '">' +
+    [14, 30, 90, 180].map((n) => '<option value="' + n + '"' + (h.days === n ? " selected" : "") + ">posledních " + n + " dní</option>").join("") + "</select></div>" +
+    '<button class="btn sm" data-act="hist" data-f="' + F.id + '">' + (h.data ? "Obnovit" : "Zobrazit historii") + "</button>" +
+    '<a class="btn ghost sm" href="/api/family/' + F.id + "/history?days=" + h.days + '&format=csv">Stáhnout CSV</a></div>' + body + "</section>";
+}
+async function loadHist(fid) {
+  const h = HIST[fid];
+  h.loading = true; render();
+  try { h.data = await hh.api("/api/family/" + fid + "/history?days=" + h.days); } catch (e) { hh.toast(e.message, true); }
+  h.loading = false; render();
+}
+
 function kidHTML(F, c) {
   const st = c.state, L = lvlOf(st.xp), n = st.strikes.length;
   const missionPill = { open: '<span class="pill">Mise: rozdělaná</span>', pending: '<span class="pill warn">Mise: čeká na schválení</span>', approved: '<span class="pill ok">Mise: schválená</span>' }[st.mission.status];
@@ -89,7 +132,7 @@ function kidHTML(F, c) {
     "<div><h3>" + esc(st.hero.name || c.displayName) + '</h3><span class="cap">' + esc(c.displayName) + " · " + FORMS[tierOf(L) - 1] + " · level " + L + " · " + st.xp + " XP</span></div></div>" +
     '<div class="stat">' + (st.regen ? '<span class="pill bad">Den regenerace: dnes bez hraní</span>' : '<span class="pill ok">Dnes ' + st.usable + " min</span>") +
     '<span class="pill">Zítra ' + st.tomorrow + " min" + (st.tomorrowPending ? " (+" + st.tomorrowPending + " čeká)" : "") + "</span>" + missionPill +
-    '<span class="pill">' + ic("flame") + st.streak + " " + dny(st.streak) + "</span></div>" +
+    '<span class="pill">' + ic("flame") + st.streak + " " + dny(st.streak) + "</span></div>" + birthHTML(F, c) +
     '<div><div class="eyebrow" style="margin-bottom:6px">Trhliny štítu dnes (' + n + "/" + F.g.limits.maxStrikes + ')</div><div class="shs">' + [0, 1, 2].map((i) => shield(i < n)).join("") +
     (n ? '<span class="cap" style="margin-left:6px">' + esc(st.strikes.map((s) => s.reason).join(", ")) + "</span>" : "") + "</div></div>" +
     (st.regenTomorrow ? '<p class="pill bad" style="justify-self:start">Štít se rozbil: zítra je Den regenerace</p>' : "") +
@@ -114,7 +157,7 @@ function render() {
     '<div class="eyebrow" style="margin-top:6px">Rodina</div><h1>' + esc(F.g.family.name) + "</h1>" +
     queueHTML(F) +
     '<section class="panel"><h2>Děti</h2>' + (F.g.children.length ? '<div class="kids">' + F.g.children.map((c) => kidHTML(F, c)).join("") + "</div>" : '<p class="cap">V rodině zatím není žádné dítě. Připojí ho správce.</p>') + "</section>" +
-    '<section class="panel"><h2>Bonusové úkoly</h2><p class="cap">Dítě je splní navíc a vy je schválíte. Bonusové minuty i XP se připíšou po schválení, minuty platí od zítřka. Bez denního stropu.</p>" +
+    histHTML(F) + '<section class="panel"><h2>Bonusové úkoly</h2><p class="cap">Dítě je splní navíc a vy je schválíte. Bonusové minuty i XP se připíšou po schválení, minuty platí od zítřka. Bez denního stropu.</p>' +
     F.g.chores.map((c) => choreHTML(F, c)).join("") +
     '<form class="chore newchore" data-f="' + F.id + '" data-new="1"><div class="field"><label>Nový úkol</label><input type="text" name="label" maxlength="60" placeholder="např. Ustlat postel" required></div>' +
     '<div class="field"><label>Minuty</label><input type="number" name="minutes" value="5" min="0" max="60" required></div>' +
@@ -152,8 +195,20 @@ document.addEventListener("click", (e) => {
     run(() => post("/api/family/" + d.f + "/children/" + d.c + "/strikes", { reason }), "Trhlina udělena");
   } else if (a === "unstrike") {
     run(() => hh.api("/api/family/" + d.f + "/children/" + d.c + "/strikes/last", { method: "DELETE" }), "Trhlina vrácena");
+  } else if (a === "hist") {
+    loadHist(d.f);
   } else if (a === "chore-active") {
     run(() => hh.api("/api/family/" + d.f + "/chores/" + d.id, { method: "PATCH", body: { active: d.on === "1" } }), d.on === "1" ? "Úkol zapnut" : "Úkol vypnut");
+  }
+});
+
+document.addEventListener("change", (e) => {
+  const t = e.target;
+  if (t.matches("select[data-birth]")) {
+    run(() => hh.api("/api/family/" + t.dataset.f + "/children/" + t.dataset.c, { method: "PATCH", body: { birthYear: t.value ? Number(t.value) : null } }), "Rok narození uložen");
+  } else if (t.matches("select[data-histdays]")) {
+    const h = HIST[t.dataset.f];
+    if (h) { h.days = Number(t.value); if (h.data) loadHist(t.dataset.f); else render(); }
   }
 });
 
