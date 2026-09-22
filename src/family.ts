@@ -15,6 +15,7 @@ import { gradeOf, TRAIN_MINUTES_CAP } from "./train";
 import { addDays } from "./game";
 import { history, clampDays, touchStats, type DayStat } from "./stats";
 import { getSettings, grantCredit, saveSettings, playsFor } from "./arcade";
+import { getHaSettings, saveHaSettings, setChildMap, haOverview, syncChild } from "./homeassistant";
 
 const csvCell = (v: string | number | boolean) => {
   const s = String(v);
@@ -70,6 +71,7 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
     )
       .bind(familyId)
       .all<{ id: string; name: string; birthYear: number | null }>();
+    const ha = await haOverview(env, familyId, kids.results.map((k) => k.id));
     const children = await Promise.all(
       kids.results.map(async (k) => {
         const t = await env.DB.prepare(
@@ -85,6 +87,7 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
           training: { sessionsToday: t?.n ?? 0, minutesToday: t?.m ?? 0, correctToday: t?.c ?? 0, totalToday: t?.t ?? 0 },
           state: await childState(env, k.id, familyId, day),
           plays: await playsFor(env, k.id, familyId, day),
+          ha: ha.children[k.id],
         };
       }),
     );
@@ -117,8 +120,24 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
       },
       chores: chores.results.map((c) => ({ ...c, active: !!c.active })),
       gameSettings: await getSettings(env, familyId),
+      haSettings: ha.settings,
       limits: { maxStrikes: MAX_STRIKES, missionMinutes: MISSION_MINUTES, missionXp: MISSION_XP, levels: XPT, trainCap: TRAIN_MINUTES_CAP },
     });
+  }
+
+  /* --- Home Assistant / Family Link --- */
+  if (path === "/ha-settings" && req.method === "PATCH") {
+    return json({ ok: true, settings: await saveHaSettings(env, familyId, await readJson(req)) });
+  }
+  if ((r = path.match(/^\/children\/([\w-]+)\/ha-map$/)) && req.method === "PATCH") {
+    await childInFamily(r[1]);
+    const haChildId = text((await readJson(req)).haChildId ?? "", "ID v Home Assistant", 0, 120);
+    await setChildMap(env, r[1], haChildId);
+    return json({ ok: true, haChildId });
+  }
+  if ((r = path.match(/^\/children\/([\w-]+)\/ha-sync$/)) && req.method === "POST") {
+    await childInFamily(r[1]);
+    return json(await syncChild(env, familyId, r[1], day));
   }
 
   /* --- hra: nastavení odměn a ruční přidání spuštění --- */

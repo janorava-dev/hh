@@ -88,6 +88,30 @@ function gameHTML(F, c) {
     (p.tomorrow ? " (+" + p.tomorrow + " zítra)" : "") + '</span><button class="btn ghost sm" data-act="gcredit" data-f="' + F.id + '" data-c="' + c.id + '">+1 spuštění</button></div>';
 }
 
+function haChildHTML(F, c) {
+  const h = c.ha, last = h.last;
+  const stamp = last ? new Date(last.at + "Z").toLocaleString("cs-CZ", { day: "numeric", month: "numeric", hour: "2-digit", minute: "2-digit" }) : null;
+  const badge = !last ? '<span class="pill">Zatím nesynchronizováno</span>'
+    : last.ok ? '<span class="pill ok">OK ' + esc(stamp) + " · " + last.minutes + " min" + (last.locked ? " · zamčeno" : "") + "</span>"
+    : '<span class="pill bad">Nepovedlo se ' + esc(stamp) + (last.message ? ": " + esc(last.message) : "") + "</span>";
+  return '<div class="inline"><b style="min-width:70px">' + esc(c.displayName) + "</b>" +
+    '<div class="field" style="flex:1 1 160px"><input type="text" data-hamap data-f="' + F.id + '" data-c="' + c.id + '" value="' + esc(h.haChildId) + '" placeholder="ID zařízení v Home Assistant" maxlength="120"></div>' +
+    '<button class="btn ghost sm" data-act="hasync" data-f="' + F.id + '" data-c="' + c.id + '"' + (h.haChildId ? "" : " disabled") + ">Synchronizovat teď</button>" + badge + "</div>";
+}
+
+function haSettingsHTML(F) {
+  const s = F.g.haSettings;
+  return '<section class="panel"><h2>Family Link (přes Home Assistant)</h2>' +
+    '<p class="cap">Neoficiální napojení – Household Hero každou noc pošle na váš domácí Home Assistant, kolik minut má dítě dnes k dispozici (a jestli je Den regenerace). Home Assistant to pak předá do Family Link. ' +
+    "Vyžaduje váš vlastní Home Assistant s doplňkem, který umí Family Link ovládat. <a href=\"/ha-setup.html\" target=\"_blank\" rel=\"noopener\">Návod k zapojení</a>.</p>" +
+    '<form class="haset" data-f="' + F.id + '"><div class="row2">' +
+    '<div class="field"><label>Webhook URL</label><input type="text" name="webhookUrl" value="' + esc(s.webhookUrl) + '" placeholder="https://…/api/webhook/…" maxlength="500"></div>' +
+    '<div class="field"><label>Token (nepovinné)</label><input type="text" name="token" value="' + esc(s.token) + '" maxlength="200"></div></div>' +
+    '<label class="check"><input type="checkbox" name="enabled"' + (s.enabled ? " checked" : "") + '> Zapnuto</label>' +
+    '<button class="btn sm" type="submit" style="justify-self:start">Uložit</button></form>' +
+    '<div class="sub" style="margin-top:4px">' + F.g.children.map((c) => haChildHTML(F, c)).join("") + "</div></section>";
+}
+
 function gameSettingsHTML(F) {
   const s = F.g.gameSettings;
   const num = (label, name, v) => '<div class="field"><label>' + label + '</label><input type="number" name="' + name + '" value="' + v + '" min="0" max="10" required></div>';
@@ -169,13 +193,13 @@ function choreHTML(F, c) {
 }
 
 function render() {
-  const keep = document.activeElement && document.activeElement.closest && document.activeElement.closest("form.chore, form.newchore, form.gset");
+  const keep = document.activeElement && document.activeElement.closest && document.activeElement.closest("form.chore, form.newchore, form.gset, form.haset") || document.activeElement.matches("[data-hamap]");
   if (keep) return; // nepřepisuj rozepsané pole
   root.innerHTML = hh.header(ME, "parent") + FAMS.map((F) =>
     '<div class="eyebrow" style="margin-top:6px">Rodina</div><h1>' + esc(F.g.family.name) + "</h1>" +
     queueHTML(F) +
     '<section class="panel"><h2>Děti</h2>' + (F.g.children.length ? '<div class="kids">' + F.g.children.map((c) => kidHTML(F, c)).join("") + "</div>" : '<p class="cap">V rodině zatím není žádné dítě. Připojí ho správce.</p>') + "</section>" +
-    histHTML(F) + gameSettingsHTML(F) + '<section class="panel"><h2>Bonusové úkoly</h2><p class="cap">Dítě je splní navíc a vy je schválíte. Bonusové minuty i XP se připíšou po schválení, minuty platí od zítřka. Bez denního stropu.</p>' +
+    histHTML(F) + haSettingsHTML(F) + gameSettingsHTML(F) + '<section class="panel"><h2>Bonusové úkoly</h2><p class="cap">Dítě je splní navíc a vy je schválíte. Bonusové minuty i XP se připíšou po schválení, minuty platí od zítřka. Bez denního stropu.</p>' +
     F.g.chores.map((c) => choreHTML(F, c)).join("") +
     '<form class="chore newchore" data-f="' + F.id + '" data-new="1"><div class="field"><label>Nový úkol</label><input type="text" name="label" maxlength="60" placeholder="např. Ustlat postel" required></div>' +
     '<div class="field"><label>Minuty</label><input type="number" name="minutes" value="5" min="0" max="60" required></div>' +
@@ -213,6 +237,11 @@ document.addEventListener("click", (e) => {
     run(() => post("/api/family/" + d.f + "/children/" + d.c + "/strikes", { reason }), "Trhlina udělena");
   } else if (a === "unstrike") {
     run(() => hh.api("/api/family/" + d.f + "/children/" + d.c + "/strikes/last", { method: "DELETE" }), "Trhlina vrácena");
+  } else if (a === "hasync") {
+    run(async () => {
+      const r = await hh.api("/api/family/" + d.f + "/children/" + d.c + "/ha-sync", { method: "POST" });
+      if (!r.ok) throw new Error(r.message || "Synchronizace se nepovedla");
+    }, "Synchronizováno s Home Assistant");
   } else if (a === "gcredit") {
     run(() => post("/api/family/" + d.f + "/children/" + d.c + "/game-credit", { plays: 1 }), "Spuštění přidáno");
   } else if (a === "hist") {
@@ -224,6 +253,10 @@ document.addEventListener("click", (e) => {
 
 document.addEventListener("change", (e) => {
   const t = e.target;
+  if (t.matches("[data-hamap]")) {
+    run(() => hh.api("/api/family/" + t.dataset.f + "/children/" + t.dataset.c + "/ha-map", { method: "PATCH", body: { haChildId: t.value.trim() } }), "ID uloženo");
+    return;
+  }
   if (t.matches("select[data-birth]")) {
     run(() => hh.api("/api/family/" + t.dataset.f + "/children/" + t.dataset.c, { method: "PATCH", body: { birthYear: t.value ? Number(t.value) : null } }), "Rok narození uložen");
   } else if (t.matches("select[data-histdays]")) {
@@ -234,6 +267,12 @@ document.addEventListener("change", (e) => {
 
 document.addEventListener("submit", (e) => {
   const f = e.target;
+  if (f.classList.contains("haset")) {
+    e.preventDefault();
+    const g = new FormData(f);
+    run(() => hh.api("/api/family/" + f.dataset.f + "/ha-settings", { method: "PATCH", body: { webhookUrl: g.get("webhookUrl") || "", token: g.get("token") || "", enabled: g.get("enabled") === "on" } }), "Nastavení uloženo");
+    return;
+  }
   if (f.classList.contains("gset")) {
     e.preventDefault();
     const g = new FormData(f);

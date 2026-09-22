@@ -4,6 +4,7 @@ import { admin } from "./admin";
 import { child } from "./child";
 import { family } from "./family";
 import { refreshAll } from "./stats";
+import { syncAll as haSyncAll } from "./homeassistant";
 import { arcade } from "./arcade";
 
 export interface Env {
@@ -64,6 +65,7 @@ export default {
   /** Noční přepočet denních souhrnů (cron v wrangler.jsonc). */
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(refreshAll(env));
+    ctx.waitUntil(haSyncAll(env));
   },
 } satisfies ExportedHandler<Env>;
 

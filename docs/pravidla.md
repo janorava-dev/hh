@@ -83,3 +83,13 @@ Hra typu Pac-Man: dítě hraje samo za sebe se svým avatarem, sbírá tečky a 
 - **Rodiče hrají bez omezení** počtu spuštění (a vybírají si postavu).
 - Skóre se ukládá, dítě vidí svůj rekord a žebříček sourozenců. Skóre, které je za uplynulý čas nemožné, se ořízne.
 - Hra běží v aplikaci a vyžaduje přihlášení.
+
+## Napojení na Family Link (přes Home Assistant)
+
+Neoficiální, viz [ha-setup.html](../hh/public/ha-setup.html) pro návod k zapojení. Google nemá pro Family Link veřejné API; napojení jde jen přes komunitní doplněk (např. HAFamilyLink2.0) běžící na vlastním Home Assistant.
+
+- **Household Hero je zdroj pravdy.** Každou noc (stejný cron jako přepočet historie) spočítá pro každé dítě, kolik minut má dnes k dispozici (`usable` ze `childState`) a jestli je Den regenerace, a pošle to na webhook v Home Assistant. Posílá se „nastav na X", ne „přidej X" – nevadí poslat totéž vícekrát.
+- Rodič na stránce Rodič zapne přepínač, vyplní webhook URL (a nepovinně token, posílá se jako `Authorization: Bearer`), a u každého dítěte vyplní jeho ID v Home Assistant (typicky `device_id` z HAFamilyLink2.0, např. `switch.jony_phone`).
+- Tlačítko **Synchronizovat teď** pošle aktuální stav okamžitě, pro ověření zapojení.
+- Poslední pokus (úspěch/chyba, minuty, zamčeno) se ukládá do `ha_sync_log` (posledních 20 na dítě) a zobrazuje se rodiči.
+- Bez zapnutí, bez webhooku nebo bez mapování dítěte sync vrátí srozumitelnou chybu a nic neposílá.

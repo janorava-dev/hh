@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Napojení na Family Link</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Paytone+One&family=Nunito:wght@600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/app.css">
+<style>
+.doc{max-width:720px;margin:0 auto;padding:16px 16px 64px;display:grid;gap:18px}
+.doc h1{font-size:28px}
+.doc h2{font-size:20px;margin-top:6px}
+.doc ol,.doc ul{padding-left:22px;display:grid;gap:8px}
+.doc code{font:700 13px ui-monospace,Consolas,monospace;background:var(--surface-2);border:1px solid var(--line);border-radius:6px;padding:1px 6px}
+.doc pre{background:var(--surface-2);border:2px solid var(--line);border-radius:12px;padding:12px 14px;overflow-x:auto;font:13px/1.5 ui-monospace,Consolas,monospace}
+.warn{border:2.5px solid var(--bad);background:var(--bad-soft);border-radius:14px;padding:12px 14px}
+.step{background:var(--surface);border:2px solid var(--line);border-radius:14px;padding:14px 16px;display:grid;gap:8px}
+</style>
+</head>
+<body>
+<main class="doc">
+<div class="mark disp lg">Household Hero</div>
+<h1>Napojení na Family Link (přes Home Assistant)</h1>
+<p class="cap">Tohle je neoficiální cesta – Google k Family Link žádné veřejné API nemá. Funguje to přes komunitní doplněk, který se přihlásí do účtu dítěte a mluví s neoficiálním rozhraním Family Link. Může se to kdykoli rozbít, když Google něco změní na své straně, a technicky je to proti podmínkám Google. Doporučujeme na to samostatný Google účet dítěte, ne hlavní rodinný.</p>
+
+<div class="warn"><b>Co Household Hero dělá:</b> každou noc spočítá, kolik minut má dítě dnes k dispozici (podle mise, bonusů a Dne regenerace), a pošle to na váš Home Assistant. <b>Co musíte udělat vy:</b> mít doma běžící Home Assistant, který tenhle příkaz přijme a předá dál do Family Link.</p></div>
+
+<div class="step"><h2>1. Home Assistant a doplněk</h2>
+<p>Potřebujete Home Assistant (Raspberry Pi, mini PC, NAS – stačí Home Assistant OS nebo Container) a doplněk, který umí Family Link ovládat, např. <a href="https://github.com/jamesm85sta/HAFamilyLink2.0" target="_blank" rel="noopener">HAFamilyLink2.0</a>. Nainstalujte ho podle jeho návodu a přihlaste se do Google účtu dítěte (včetně dvoufázového ověření, pokud ho účet má).</p></div>
+
+<div class="step"><h2>2. Automatizace ve webhooku</h2>
+<p>V Home Assistant vytvořte novou automatizaci se spouštěčem <b>Webhook</b>. Dostanete tím adresu tvaru <code>https://vase-domena/api/webhook/xxxxxxxx</code> – tu vložíte do Household Hero jako „Webhook URL“.</p>
+<p>Household Hero na ni pošle JSON:</p>
+<pre>{
+  "source": "household-hero",
+  "childId": "&lt;ID, co zadáte u dítěte v Household Hero&gt;",
+  "day": "2026-09-23",
+  "minutes": 45,
+  "locked": false
+}</pre>
+<p>Tělo automatizace, která to předá do Family Link (název služby a <code>device_id</code> ověřte podle svých entit v <b>Vývojářské nástroje → Služby</b> – přesný název zařízení závisí na vašem nastavení doplňku):</p>
+<pre>trigger:
+  - platform: webhook
+    webhook_id: xxxxxxxx
+    local_only: false
+action:
+  - service: familylink.manage_bonus_time
+    data:
+      device_id: "{{ trigger.json.childId }}"
+      action_type: "set"
+      minutes: "{{ trigger.json.locked and 0 or trigger.json.minutes }}"</pre>
+<p class="cap"><code>action_type: set</code> přepíše bonusový čas na přesně tuhle hodnotu, takže nevadí, když se pošle vícekrát za sebou nebo si Household Hero a Family Link chvíli neodpovídají.</p></div>
+
+<div class="step"><h2>3. Vyplnění v Household Hero</h2>
+<ol>
+<li>Na stránce <b>Rodič</b> v sekci „Family Link (přes Home Assistant)“ vyplňte Webhook URL a zapněte přepínač.</li>
+<li>U každého dítěte vyplňte pole „ID zařízení v Home Assistant“ – přesně to, co použijete jako <code>device_id</code> výše (např. <code>switch.emma_phone_lock</code> nebo jiný identifikátor podle vašeho doplňku).</li>
+<li>Klepněte na „Synchronizovat teď“ a zkontrolujte, že se v Home Assistant (Historie / Logbook) objevilo volání služby a v Google Family Link přibyl bonusový čas.</li>
+</ol></div>
+
+<div class="step"><h2>Co dělat, když to přestane fungovat</h2>
+<p>Podívejte se na poslední pokus u dítěte na stránce Rodič – ukazuje, jestli se sync povedl a s jakou chybou. Nejčastější příčina: doplněk potřebuje znovu přihlásit (session Google vypršela) – to se řeší v rozhraní doplňku, ne v Household Hero.</p></div>
+</main>
+</body>
+</html>
