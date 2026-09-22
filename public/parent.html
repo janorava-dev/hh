@@ -103,7 +103,7 @@ function haSettingsHTML(F) {
   const s = F.g.haSettings;
   return '<section class="panel"><h2>Family Link (přes Home Assistant)</h2>' +
     '<p class="cap">Neoficiální napojení – Household Hero každou noc pošle na váš domácí Home Assistant, kolik minut má dítě dnes k dispozici (a jestli je Den regenerace). Home Assistant to pak předá do Family Link. ' +
-    "Vyžaduje váš vlastní Home Assistant s doplňkem, který umí Family Link ovládat. <a href=\"/ha-setup.html\" target=\"_blank\" rel=\"noopener\">Návod k zapojení</a>.</p>" +
+    "Vyžaduje váš vlastní Home Assistant s doplňkem, který umí Family Link ovládat. <a href=\"/ha-setup\" target=\"_blank\" rel=\"noopener\">Návod k zapojení</a>.</p>" +
     '<form class="haset" data-f="' + F.id + '"><div class="row2">' +
     '<div class="field"><label>Webhook URL</label><input type="text" name="webhookUrl" value="' + esc(s.webhookUrl) + '" placeholder="https://…/api/webhook/…" maxlength="500"></div>' +
     '<div class="field"><label>Token (nepovinné)</label><input type="text" name="token" value="' + esc(s.token) + '" maxlength="200"></div></div>' +
