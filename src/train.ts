@@ -15,6 +15,14 @@ const PASS = 0.8;
 const PARTIAL = 0.5;
 const MIN_TOTAL_MS = 12_000; // rychleji nejde, odpovědi by nebyly poctivé
 
+// Malá násobilka a dělení se zbytkem: samostatná, jednodušší výzva bez ročníku.
+// Bez XP a bez denního stropu minut (jde spustit libovolněkrát denně) – schválně jen minuty,
+// ať to nepředbíhá tempo levelů dané hlavním tréninkem a misemi.
+export const TABLES_QUESTIONS = 10;
+export const TABLES_MINUTES = 2; // za sadu s úspěšností aspoň 80 % (na zítřek jako vždy)
+export const TABLES_PASS = 0.8;
+const TABLES_MIN_TOTAL_MS = 6_000;
+
 /** Ročník podle roku narození. Školní rok začíná v září: dítě narozené 2018 je od 9/2026 ve 3. třídě. */
 export function gradeOf(birthYear: number, day: string): number {
   const y = Number(day.slice(0, 4));
@@ -26,8 +34,9 @@ export function gradeOf(birthYear: number, day: string): number {
 
 export interface Q {
   q: string; // zadání
-  a: string; // správná odpověď (desetinná čárka)
-  expr?: string; // JS výraz pro test (jen aritmetika)
+  a: string; // správná odpověď (desetinná čárka); u dvoudílné odpovědi dvě čísla oddělená mezerou
+  expr?: string; // JS výraz pro test (jen aritmetika, jednodílné odpovědi)
+  parts?: number; // kolik čísel se zadává (1 = výchozí, 2 = podíl a zbytek)
 }
 
 const rnd = (n: number) => {
@@ -198,18 +207,54 @@ export function makeQuestions(grade: number, n = TRAIN_QUESTIONS): Q[] {
   return out;
 }
 
+/* ---------- malá násobilka a dělení se zbytkem ---------- */
+
+const mulQ = (): Q => {
+  const a = ri(1, 10), b = ri(1, 10);
+  return { q: `${a} × ${b} =`, a: String(a * b), expr: `${a}*${b}`, parts: 1 };
+};
+/** Dělenec : jednociferný dělitel = jednociferný podíl, zbytek. Odpověď: "podíl zbytek". */
+const divRemQ = (): Q => {
+  const d = ri(2, 9), q = ri(1, 9), rem = ri(1, d - 1);
+  const n = d * q + rem;
+  return { q: `${n} : ${d} = ? zb. ?`, a: `${q} ${rem}`, parts: 2 };
+};
+
+export function makeTablesQuestions(n = TABLES_QUESTIONS): Q[] {
+  const out: Q[] = [];
+  const seen = new Set<string>();
+  for (let tries = 0; out.length < n && tries < 300; tries++) {
+    const q = rnd(2) ? mulQ() : divRemQ();
+    if (seen.has(q.q)) continue;
+    seen.add(q.q);
+    out.push(q);
+  }
+  return out;
+}
+
 /** Porovná odpověď dítěte s výsledkem, čárka i tečka jako desetinný oddělovač, mezery se ignorují. */
 export function isCorrect(input: string, expected: string): boolean {
-  const norm = (s: string) => Number(s.replace(/[\s ]/g, "").replace(",", ".").replace("−", "-"));
-  if (input.trim() === "") return false;
-  const x = norm(input), y = norm(expected);
-  return Number.isFinite(x) && Math.abs(x - y) < 1e-9;
+  const norm = (s: string) => Number(s.replace(/[\s ]/g, "").replace(",", ".").replace("−", "-"));
+  const one = (i: string, e: string) => {
+    if (i.trim() === "") return false;
+    const x = norm(i), y = norm(e);
+    return Number.isFinite(x) && Math.abs(x - y) < 1e-9;
+  };
+  const ei = expected.trim().split(/\s+/);
+  if (ei.length > 1) {
+    const ii = input.trim().split(/\s+/);
+    return ii.length === ei.length && ei.every((e, i) => one(ii[i] ?? "", e));
+  }
+  return one(input, expected);
 }
 
 /* ---------- endpointy /api/me/train/* ---------- */
 
+type TrainKind = "math" | "tables";
+
 interface SessionRow {
   id: string;
+  kind: TrainKind;
   grade: number;
   day: string;
   questions: string;
@@ -237,10 +282,11 @@ function publicSession(s: SessionRow) {
   const as = JSON.parse(s.answers) as AnswerRec[];
   return {
     id: s.id,
+    kind: s.kind,
     grade: s.grade,
     total: qs.length,
     answered: as.length,
-    questions: qs.map((x) => x.q),
+    questions: qs.map((x) => ({ q: x.q, parts: x.parts ?? 1 })),
     results: as.map((x, i) => ({ answer: x.a, ok: x.ok, correctAnswer: qs[i].a })),
   };
 }
@@ -251,25 +297,44 @@ export async function train(req: Request, env: Env, url: URL, me: AuthUser, day:
 
   // jen pro lokální test generátoru: 200 příkladů i s výrazy
   if (path === "/sample" && testMode) {
+    if (url.searchParams.get("kind") === "tables") {
+      return json({ questions: Array.from({ length: 20 }, () => makeTablesQuestions()).flat() });
+    }
     const g = Number(url.searchParams.get("grade")) || 3;
     return json({ questions: Array.from({ length: 20 }, () => makeQuestions(g)).flat() });
   }
 
+  const kindParam: TrainKind = url.searchParams.get("kind") === "tables" ? "tables" : "math";
   const u = await env.DB.prepare("SELECT birth_year FROM users WHERE id = ?").bind(me.id).first<{ birth_year: number | null }>();
   const birthYear = u?.birth_year ?? null;
   const grade = birthYear === null ? null : gradeOf(birthYear, day);
-  const open = () =>
-    env.DB.prepare("SELECT * FROM train_sessions WHERE child_id = ? AND status = 'open' ORDER BY started_at DESC LIMIT 1")
-      .bind(me.id)
+  const open = (kind: TrainKind) =>
+    env.DB.prepare("SELECT * FROM train_sessions WHERE child_id = ? AND kind = ? AND status = 'open' ORDER BY started_at DESC LIMIT 1")
+      .bind(me.id, kind)
       .first<SessionRow>();
 
   if (path === "" && req.method === "GET") {
+    if (kindParam === "tables") {
+      const done = await env.DB.prepare("SELECT COUNT(*) AS n FROM train_sessions WHERE child_id = ? AND kind = 'tables' AND day = ? AND status = 'done'")
+        .bind(me.id, day)
+        .first<{ n: number }>();
+      const o = await open("tables");
+      return json({
+        kind: "tables",
+        minutesPerSession: TABLES_MINUTES,
+        questions: TABLES_QUESTIONS,
+        passRatio: TABLES_PASS,
+        sessionsToday: done?.n ?? 0,
+        open: o ? publicSession(o) : null,
+      });
+    }
     const used = await trainMinutesUsed(env, me.id, day);
-    const done = await env.DB.prepare("SELECT COUNT(*) AS n FROM train_sessions WHERE child_id = ? AND day = ? AND status = 'done'")
+    const done = await env.DB.prepare("SELECT COUNT(*) AS n FROM train_sessions WHERE child_id = ? AND kind = 'math' AND day = ? AND status = 'done'")
       .bind(me.id, day)
       .first<{ n: number }>();
-    const o = await open();
+    const o = await open("math");
     return json({
+      kind: "math",
       needsBirthYear: birthYear === null,
       grade,
       minutesToday: used,
@@ -283,17 +348,21 @@ export async function train(req: Request, env: Env, url: URL, me: AuthUser, day:
   }
 
   if (path === "/start" && req.method === "POST") {
-    if (grade === null) throw new HttpError(409, "Rodič ještě nevyplnil tvůj rok narození, podle něj se vybírají příklady.");
-    const existing = await open();
+    const body = await readJson(req).catch(() => ({}) as Record<string, unknown>);
+    const kind: TrainKind = body.kind === "tables" ? "tables" : "math";
+    if (kind === "math" && grade === null) {
+      throw new HttpError(409, "Rodič ještě nevyplnil tvůj rok narození, podle něj se vybírají příklady.");
+    }
+    const existing = await open(kind);
     if (existing && Date.now() - Date.parse(existing.started_at) < 12 * 3_600_000) {
       return json({ session: publicSession(existing) });
     }
-    const qs = makeQuestions(grade);
+    const qs = kind === "tables" ? makeTablesQuestions() : makeQuestions(grade as number);
     const id = crypto.randomUUID();
     await env.DB.prepare(
-      "INSERT INTO train_sessions (id, child_id, kind, grade, day, questions, started_at, total) VALUES (?, ?, 'math', ?, ?, ?, ?, ?)",
+      "INSERT INTO train_sessions (id, child_id, kind, grade, day, questions, started_at, total) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
     )
-      .bind(id, me.id, grade, day, JSON.stringify(qs), new Date().toISOString(), qs.length)
+      .bind(id, me.id, kind, kind === "tables" ? 0 : (grade as number), day, JSON.stringify(qs), new Date().toISOString(), qs.length)
       .run();
     const s = (await env.DB.prepare("SELECT * FROM train_sessions WHERE id = ?").bind(id).first<SessionRow>())!;
     return json({ session: publicSession(s), ...(testMode ? { debugAnswers: qs.map((x) => x.a) } : {}) }, 201);
@@ -328,12 +397,20 @@ export async function train(req: Request, env: Env, url: URL, me: AuthUser, day:
     }
 
     // poslední odpověď: vyhodnocení a odměna
+    const isTables = s.kind === "tables";
     const correct = as.filter((x) => x.ok).length;
     const ratio = correct / qs.length;
-    const tooFast = now - Date.parse(s.started_at) < (testMode ? 1_000 : MIN_TOTAL_MS);
-    const used = await trainMinutesUsed(env, me.id, s.day);
-    const xp = tooFast ? 0 : ratio >= PASS ? TRAIN_XP_PASS : ratio >= PARTIAL ? TRAIN_XP_PARTIAL : 0;
-    const minutes = tooFast || ratio < PASS ? 0 : Math.min(TRAIN_MINUTES_PER_SESSION, Math.max(0, TRAIN_MINUTES_CAP - used));
+    const tooFast = now - Date.parse(s.started_at) < (testMode ? 1_000 : isTables ? TABLES_MIN_TOTAL_MS : MIN_TOTAL_MS);
+    const used = isTables ? 0 : await trainMinutesUsed(env, me.id, s.day);
+    const passed = isTables ? !tooFast && ratio >= TABLES_PASS : !tooFast && ratio >= PASS;
+    const xp = isTables ? 0 : tooFast ? 0 : ratio >= PASS ? TRAIN_XP_PASS : ratio >= PARTIAL ? TRAIN_XP_PARTIAL : 0;
+    const minutes = isTables
+      ? passed
+        ? TABLES_MINUTES
+        : 0
+      : tooFast || ratio < PASS
+        ? 0
+        : Math.min(TRAIN_MINUTES_PER_SESSION, Math.max(0, TRAIN_MINUTES_CAP - used));
     const upd = await env.DB.prepare(
       `UPDATE train_sessions SET answers = ?, status = 'done', finished_at = ?, correct = ?, total = ?, minutes_awarded = ?, xp_awarded = ?
         WHERE id = ? AND status = 'open' AND json_array_length(answers) = ?`,
@@ -357,7 +434,7 @@ export async function train(req: Request, env: Env, url: URL, me: AuthUser, day:
       );
     }
     if (ins.length) await env.DB.batch(ins);
-    if (!tooFast && ratio >= PASS) {
+    if (passed) {
       const fam = me.memberships.find((m) => m.role === "child");
       if (fam) await grantCredit(env, me.id, (await getSettings(env, fam.familyId)).trainPlays, s.day, "train", s.id);
     }
@@ -367,16 +444,20 @@ export async function train(req: Request, env: Env, url: URL, me: AuthUser, day:
       ok,
       correctAnswer: qs[idx].a,
       done: true,
-      summary: {
-        correct,
-        total: qs.length,
-        xp,
-        minutes,
-        tooFast,
-        capReached: ratio >= PASS && !tooFast && minutes < TRAIN_MINUTES_PER_SESSION,
-        minutesToday: used + minutes,
-        minutesCap: TRAIN_MINUTES_CAP,
-      },
+      summary: isTables
+        ? { kind: "tables", correct, total: qs.length, minutes, tooFast, passed }
+        : {
+            kind: "math",
+            correct,
+            total: qs.length,
+            xp,
+            minutes,
+            tooFast,
+            passed,
+            capReached: ratio >= PASS && !tooFast && minutes < TRAIN_MINUTES_PER_SESSION,
+            minutesToday: used + minutes,
+            minutesCap: TRAIN_MINUTES_CAP,
+          },
     });
   }
 

@@ -66,6 +66,15 @@ Práh XP pro levely 1–10: 0, 100, 500, 1100, 2000, 3100, 4400, 6000, 7900, 100
 - Sada odpovězená příliš rychle (méně než 12 s celkem) se nepočítá.
 - Obtížnost: 1. třída sčítání do 20, 2. do 100 a malá násobilka, 3. násobilka a dělení, 4. písemné počty a zbytek po dělení, 5. desetinná čísla, zlomky, násobení dvojciferných, 6.+ procenta a záporná čísla. Zadání obsahuje i pár slovních úloh.
 
+## Malá násobilka (extra výzva)
+
+Samostatná výzva vedle tréninku podle ročníku, bez roku narození, bez ročníkové obtížnosti.
+
+- Sada má **10 příkladů**, namíchaných ze dvou typů: **malá násobilka** (dvě čísla 1–10, jeden výsledek) a **dělení jednociferným číslem se zbytkem** (dělenec zvolený tak, aby podíl i zbytek byly jednociferné, např. „37 : 8 = ? zb. ?“) – u dělení se zadávají **dvě čísla** (podíl a zbytek).
+- Úspěšnost **aspoň 80 % (8 z 10)**: **+2 min** na zítřek. Pod 80 %: nic. **Žádné XP** – schválně, ať tahle rychlá výzva nepředbíhá tempo levelů dané misemi a hlavním tréninkem.
+- **Bez denního stropu**: jde spustit tolikrát za den, kolikrát dítě chce, a každá úspěšná sada dá dalších +2 min.
+- Sada odpovězená příliš rychle (méně než 6 s celkem) se nepočítá.
+
 ## Historie
 
 - Pro každé dítě a den se ukládá souhrn (`daily_stats`): získané XP a minuty, minuty k dispozici, přenesené a zamčené, trhliny, mise, bonusy, trénink, XP celkem a level.

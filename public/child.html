@@ -203,6 +203,9 @@ button{cursor:pointer}
 .qtext.long{font-family:'Nunito',sans-serif;font-weight:800;font-size:19px;line-height:1.4;text-align:left}
 .ans{width:100%;height:68px;font-size:32px;text-align:center;font-weight:800;border:3px solid var(--outline);border-radius:16px;background:var(--surface);color:var(--ink)}
 .ans:focus{border-color:var(--accent)}
+.ans2{display:flex;align-items:center;justify-content:center;gap:10px}
+.ans2 .ans.small{width:100px;flex:none}
+.ans2 span{font-weight:800;font-size:20px}
 .fb{padding:12px;border-radius:14px;font-weight:800;text-align:center;font-size:18px}
 .fb.ok{background:var(--ok-soft);border:2px solid var(--ok)}
 .fb.no{background:var(--bad-soft);border:2px solid var(--bad)}
@@ -293,73 +296,108 @@ function teamView(k,st){
   <section class="flat"><div class="eyebrow">XP celkem</div>${all.map(x=>`<div class="rank"><span class="kid" style="display:block">${hero(x.hero,lvlOf(x.xp),eqFor(x,lvlOf(x.xp)),HEAD_VIEW)}</span><div><b>${esc(x.name)}${x.me?' (ty)':''}</b> <span class="cap">Level ${lvlOf(x.xp)}</span><div class="bar"><i class="ok" style="width:${x.xp/mx*100}%"></i></div></div><b style="font-variant-numeric:tabular-nums">${x.xp}</b></div>`).join('')}
     <p class="cap">Soutěží se spolu, ne proti sobě.</p></section>`;
 }
-/* ---------- trénink počítání ---------- */
-const T={phase:'menu',status:null,session:null,idx:0,fb:null,summary:null,loading:false,err:null};
+/* ---------- trénink: dvě samostatné výzvy ---------- */
+const T={phase:'menu',kind:null,status:null,session:null,idx:0,fb:null,summary:null,loading:false,err:null};
 const trBusy=()=>S.tab==='train'&&(T.phase==='q'||T.phase==='fb');
 let trTimer;
+
+const qcls=t=>'qtext'+(t.length>38?' long':'');
+const dots=s=>s.questions.map((_,j)=>{const r=s.results[j];return `<i class="dot ${r?(r.ok?'ok':'no'):j===T.idx?'now':''}"></i>`}).join('');
+function ansInputs(parts){
+  if(parts===2)return `<div class="ans2"><input id="ans" class="ans small" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Podíl"><span>zb.</span><input id="ans2" class="ans small" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Zbytek"></div>`;
+  return `<input id="ans" class="ans" type="text" inputmode="decimal" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="Tvoje odpověď">`;
+}
 
 function trainView(){
   if(T.loading&&!T.status)return `<section class="panel"><p class="cap">Načítám…</p></section>`;
   if(!T.status)return `<section class="panel"><p class="cap">${esc(T.err||'Trénink se nepodařilo načíst.')}</p></section>`;
-  const st=T.status;
-  if(st.needsBirthYear)return `<section class="panel"><div class="eyebrow">Trénink</div><h2>Počítání</h2><p>Rodič ještě nevyplnil tvůj rok narození. Podle něj se vybírají příklady, které ti sedí.</p></section>`;
-  const used=st.minutesToday,cap=st.minutesCap,need=Math.ceil(st.questions*0.8);
-  const head=`<section class="panel"><div class="eyebrow">Trénink · ${st.grade}. třída</div><h2>Počítání</h2>
-    <div class="steps"><div class="bar" aria-hidden="true"><i class="ok" style="width:${Math.min(100,used/cap*100)}%"></i></div><span>${used}/${cap} min</span></div>
-    <p class="cap">${st.questions} příkladů v sadě. Aspoň ${need} správně = +${st.minutesPerSession} min na zítra a +${st.xpPerSession} XP. Minut z tréninku je za den nejvýš ${cap}, XP můžeš sbírat dál.</p></section>`;
-  const qcls=t=>'qtext'+(t.length>38?' long':'');
+  if(T.phase==='menu'||!T.kind)return menuView();
+  return T.kind==='tables'?flowView(T.status.tables,tablesHead(T.status.tables),tablesMsg):flowView(T.status.math,mathHead(T.status.math),mathMsg);
+}
+function mathHead(m){
+  if(m.needsBirthYear)return `<section class="panel"><div class="eyebrow">Počítání podle ročníku</div><h2>Trénink</h2><p>Rodič ještě nevyplnil tvůj rok narození. Podle něj se vybírají příklady, které ti sedí.</p></section>`;
+  return `<section class="panel"><div class="eyebrow">Počítání · ${m.grade}. třída</div><h2>Trénink</h2>
+    <div class="steps"><div class="bar" aria-hidden="true"><i class="ok" style="width:${Math.min(100,m.minutesToday/m.minutesCap*100)}%"></i></div><span>${m.minutesToday}/${m.minutesCap} min</span></div>
+    <p class="cap">${m.questions} příkladů v sadě. Aspoň ${Math.ceil(m.questions*0.8)} správně = +${m.minutesPerSession} min na zítra a +${m.xpPerSession} XP. Minut z tréninku je za den nejvýš ${m.minutesCap}, XP můžeš sbírat dál.</p></section>`;
+}
+function tablesHead(t){
+  return `<section class="panel"><div class="eyebrow">Malá násobilka</div><h2>Násobení a dělení se zbytkem</h2>
+    <p class="cap">${t.questions} příkladů. Aspoň ${Math.ceil(t.questions*t.passRatio)} správně = +${t.minutesPerSession} min na zítra. Spustit můžeš, kolikrát chceš.</p>
+    <p class="cap">Dnes hotových sad: ${t.sessionsToday}</p></section>`;
+}
+function mathMsg(m){
+  const need=Math.ceil(T.status.math.questions*0.8);
+  return m.tooFast?'Odpovídal(a) jsi příliš rychle, tahle sada se nepočítá. Zkus to a přemýšlej.'
+    :m.minutes>0?`+${m.minutes} min na zítra a +${m.xp} XP. Skvělé!`
+    :m.capReached?`Dnešních ${m.minutesCap} minut z tréninku máš splněno, XP se ti připsalo. Můžeš trénovat dál.`
+    :m.xp>0?`+${m.xp} XP. Na minuty potřebuješ aspoň ${need} správně z ${m.total}.`
+    :'Tentokrát bez odměny. Zkus to znovu, jde to!';
+}
+function tablesMsg(m){
+  const need=Math.ceil(T.status.tables.questions*T.status.tables.passRatio);
+  return m.tooFast?'Odpovídal(a) jsi příliš rychle, tahle sada se nepočítá. Zkus to a přemýšlej.'
+    :m.passed?`+${m.minutes} min na zítra. Skvělé!`
+    :`Tentokrát bez odměny – potřebuješ aspoň ${need} správně z ${m.total}. Zkus to znovu!`;
+}
+function flowView(st,head,msgFn){
   if(T.phase==='q'&&T.session){
-    const s=T.session,i=T.idx;
-    return `<section class="panel"><div class="qh"><div class="eyebrow">Příklad ${i+1} z ${s.total}</div><div class="dots" aria-hidden="true">${s.questions.map((_,j)=>{const r=s.results[j];return `<i class="dot ${r?(r.ok?'ok':'no'):j===i?'now':''}"></i>`}).join('')}</div></div>
-      <div class="${qcls(s.questions[i])}">${esc(s.questions[i])}</div>
-      <input id="ans" class="ans" type="text" inputmode="decimal" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done" aria-label="Tvoje odpověď">
+    const s=T.session,i=T.idx,q=s.questions[i];
+    return `<section class="panel"><div class="qh"><div class="eyebrow">Příklad ${i+1} z ${s.total}</div><div class="dots" aria-hidden="true">${dots(s)}</div></div>
+      <div class="${qcls(q.q)}">${esc(q.q)}</div>
+      ${ansInputs(q.parts)}
       <button class="btn" data-act="tra" data-v="1">Odpovědět</button></section>`;
   }
   if(T.phase==='fb'&&T.session&&T.fb){
-    const s=T.session,f=T.fb,i=T.idx;
-    return `<section class="panel"><div class="qh"><div class="eyebrow">Příklad ${i+1} z ${s.total}</div><div class="dots" aria-hidden="true">${s.questions.map((_,j)=>{const r=s.results[j];return `<i class="dot ${r?(r.ok?'ok':'no'):''}"></i>`}).join('')}</div></div>
-      <div class="${qcls(s.questions[i])}">${esc(s.questions[i])}</div>
+    const s=T.session,f=T.fb,i=T.idx,q=s.questions[i];
+    return `<section class="panel"><div class="qh"><div class="eyebrow">Příklad ${i+1} z ${s.total}</div><div class="dots" aria-hidden="true">${dots(s)}</div></div>
+      <div class="${qcls(q.q)}">${esc(q.q)}</div>
       <div class="fb ${f.ok?'ok':'no'}" role="status">${f.ok?'Správně!':'Ne tak docela. Správně je '+esc(f.correctAnswer)+'.'}</div>
       <button class="btn" id="nxt" data-act="trn" data-v="1">${f.done?'Výsledek':'Další'}</button></section>`;
   }
   if(T.phase==='done'&&T.summary){
     const m=T.summary;
-    const msg=m.tooFast?'Odpovídal(a) jsi příliš rychle, tahle sada se nepočítá. Zkus to a přemýšlej.'
-      :m.minutes>0?`+${m.minutes} min na zítra a +${m.xp} XP. Skvělé!`
-      :m.capReached?`Dnešních ${m.minutesCap} minut z tréninku máš splněno, XP se ti připsalo. Můžeš trénovat dál.`
-      :m.xp>0?`+${m.xp} XP. Na minuty potřebuješ aspoň ${need} správně z ${m.total}.`
-      :'Tentokrát bez odměny. Zkus to znovu, jde to!';
-    return head+`<section class="panel center"><div class="eyebrow">Výsledek</div><div class="big">${m.correct}<small> z ${m.total}</small></div><p>${esc(msg)}</p>
-      <div class="inline" style="justify-content:center"><button class="btn" data-act="trs" data-v="1">Další sada</button><button class="btn ghost" data-act="trm" data-v="1">Zpět</button></div></section>`;
+    return head+`<section class="panel center"><div class="eyebrow">Výsledek</div><div class="big">${m.correct}<small> z ${m.total}</small></div><p>${esc(msgFn(m))}</p>
+      <div class="inline" style="justify-content:center"><button class="btn" data-act="trs" data-v="${T.kind}">Další sada</button><button class="btn ghost" data-act="trm" data-v="1">Zpět</button></div></section>`;
   }
-  return head+`<section class="panel center"><p>Dnes hotových sad: ${st.sessionsToday}</p><button class="btn" data-act="trs" data-v="1">Spustit ${st.questions} příkladů</button></section>`;
+  return head+`<section class="panel center"><button class="btn" data-act="trs" data-v="${T.kind}">${st.open?'Pokračovat':'Spustit '+st.questions+' příkladů'}</button></section>`;
+}
+function menuView(){
+  return mathHead(T.status.math).replace('</section>','')+`<button class="btn" data-act="trs" data-v="math">${T.status.math.open?'Pokračovat':'Spustit '+T.status.math.questions+' příkladů'}</button></section>`+
+    tablesHead(T.status.tables).replace('</section>','')+`<button class="btn" data-act="trs" data-v="tables">${T.status.tables.open?'Pokračovat':'Spustit '+T.status.tables.questions+' příkladů'}</button></section>`;
 }
 
 async function loadTrain(){
   T.loading=true;T.err=null;render();
   try{
-    const st=await hh.api('/api/me/train');T.status=st;
-    if(st.open&&!(T.phase==='q'||T.phase==='fb')){T.session=st.open;T.idx=st.open.answered;T.phase=st.open.answered<st.open.total?'q':'menu'}
+    const [m,t]=await Promise.all([hh.api('/api/me/train?kind=math'),hh.api('/api/me/train?kind=tables')]);
+    T.status={math:m,tables:t};
+    const openKind=m.open?'math':t.open?'tables':null;
+    if(openKind&&!(T.phase==='q'||T.phase==='fb')){
+      T.kind=openKind;const o=T.status[openKind].open;
+      T.session=o;T.idx=o.answered;T.phase=o.answered<o.total?'q':'menu';
+    }
   }catch(e){T.err=e.message}
   T.loading=false;render();focusAns();
 }
-async function trStatus(){try{T.status=await hh.api('/api/me/train')}catch(e){}render()}
+async function trStatus(){if(!T.kind)return;try{T.status[T.kind]=await hh.api('/api/me/train?kind='+T.kind)}catch(e){}render()}
 function focusAns(){const el=document.getElementById('ans');if(el)el.focus({preventScroll:true})}
-async function trainStart(){
-  try{const r=await hh.api('/api/me/train/start',{method:'POST',body:{}});T.session=r.session;T.idx=r.session.answered;T.phase='q';T.summary=null;T.fb=null}
+async function trainStart(kind){
+  T.kind=kind;
+  try{const r=await hh.api('/api/me/train/start',{method:'POST',body:{kind}});T.session=r.session;T.idx=r.session.answered;T.phase='q';T.summary=null;T.fb=null}
   catch(e){toast(e.message)}
   render();focusAns();
 }
 async function trainAnswer(){
-  const el=document.getElementById('ans'),val=el?el.value.trim():'';
-  if(!val){toast('Napiš odpověď');return}
-  el.disabled=true;
+  const el=document.getElementById('ans'),el2=document.getElementById('ans2');
+  const val=el2?(el.value.trim()+' '+el2.value.trim()):(el?el.value.trim():'');
+  if(!el.value.trim()||(el2&&!el2.value.trim())){toast('Napiš odpověď');return}
+  el.disabled=true;if(el2)el2.disabled=true;
   try{
     const r=await hh.api('/api/me/train/answer',{method:'POST',body:{sessionId:T.session.id,answer:val}});
     T.session.results.push({answer:val,ok:r.ok,correctAnswer:r.correctAnswer});T.fb=r;T.phase='fb';
     if(r.done)T.summary=r.summary;
     if(r.ok&&!r.done){clearTimeout(trTimer);trTimer=setTimeout(()=>{if(T.phase==='fb')trainNext()},900)}
-  }catch(e){toast(e.message);if(e.status===404){T.phase='menu';T.session=null;await trStatus();return}if(el)el.disabled=false;return}
+  }catch(e){toast(e.message);if(e.status===404){T.phase='menu';T.session=null;await trStatus();return}el.disabled=false;if(el2)el2.disabled=false;return}
   render();const n=document.getElementById('nxt');if(n)n.focus({preventScroll:true});
 }
 function trainNext(){
@@ -417,7 +455,7 @@ document.addEventListener('click',e=>{
   const a=b.dataset.act,v=b.dataset.v,k=kid();S.fk=[a,v];
   if(a.startsWith('tr'))S.fk=null;
   if(a==='tab'){S.tab=v;render();if(v==='train')loadTrain();if(v==='team')loadHist()}
-  else if(a==='trs')trainStart()
+  else if(a==='trs')trainStart(v)
   else if(a==='tra')trainAnswer()
   else if(a==='trn')trainNext()
   else if(a==='trm'){T.phase='menu';render()}
@@ -431,7 +469,8 @@ document.addEventListener('change',e=>{
 });
 document.addEventListener('keydown',e=>{
   if(e.key!=='Enter'||S.tab!=='train')return;
-  if(T.phase==='q'&&e.target.id==='ans'){e.preventDefault();trainAnswer()}
+  if(T.phase==='q'&&e.target.id==='ans'){e.preventDefault();const a2=document.getElementById('ans2');if(a2)a2.focus();else trainAnswer()}
+  else if(T.phase==='q'&&e.target.id==='ans2'){e.preventDefault();trainAnswer()}
   else if(T.phase==='fb'&&e.target.tagName!=='BUTTON'){e.preventDefault();trainNext()}
 });
 document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')load(true)});

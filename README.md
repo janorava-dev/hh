@@ -31,6 +31,7 @@ npm run test:game                     # herní smyčka: mise, bonusy, trhliny, p
 npm run test:train                    # trénink počítání, rok narození, historie a CSV
 npm run test:core                     # jádro hry (bludiště, duchové, bodování)
 npm run test:arcade                   # spuštění hry, nastavení odměn, Den regenerace
+npm run test:tables                   # malá násobilka a dělení se zbytkem
 npm run test:pages                    # syntaxe skriptů ve stránkách (spouštět před každým nasazením)
 ```
 

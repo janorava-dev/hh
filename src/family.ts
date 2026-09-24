@@ -75,16 +75,21 @@ export async function family(req: Request, env: Env, url: URL, me: AuthUser): Pr
     const children = await Promise.all(
       kids.results.map(async (k) => {
         const t = await env.DB.prepare(
-          "SELECT COUNT(*) AS n, COALESCE(SUM(minutes_awarded), 0) AS m, COALESCE(SUM(correct), 0) AS c, COALESCE(SUM(total), 0) AS t FROM train_sessions WHERE child_id = ? AND day = ? AND status = 'done'",
+          "SELECT kind, COUNT(*) AS n, COALESCE(SUM(minutes_awarded), 0) AS m, COALESCE(SUM(correct), 0) AS c, COALESCE(SUM(total), 0) AS t FROM train_sessions WHERE child_id = ? AND day = ? AND status = 'done' GROUP BY kind",
         )
           .bind(k.id, day)
-          .first<{ n: number; m: number; c: number; t: number }>();
+          .all<{ kind: "math" | "tables"; n: number; m: number; c: number; t: number }>();
+        const byKind = (kind: "math" | "tables") => {
+          const r = t.results.find((x) => x.kind === kind);
+          return { sessionsToday: r?.n ?? 0, minutesToday: r?.m ?? 0, correctToday: r?.c ?? 0, totalToday: r?.t ?? 0 };
+        };
         return {
           id: k.id,
           displayName: k.name,
           birthYear: k.birthYear,
           grade: k.birthYear === null ? null : gradeOf(k.birthYear, day),
-          training: { sessionsToday: t?.n ?? 0, minutesToday: t?.m ?? 0, correctToday: t?.c ?? 0, totalToday: t?.t ?? 0 },
+          training: byKind("math"),
+          tablesTraining: byKind("tables"),
           state: await childState(env, k.id, familyId, day),
           plays: await playsFor(env, k.id, familyId, day),
           ha: ha.children[k.id],

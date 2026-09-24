@@ -126,10 +126,11 @@ function gameSettingsHTML(F) {
 function birthHTML(F, c) {
   const y = Number(F.g.day.slice(0, 4)), opts = ['<option value="">nevyplněno</option>'];
   for (let b = y - 5; b >= y - 16; b--) opts.push('<option value="' + b + '"' + (c.birthYear === b ? " selected" : "") + ">" + b + "</option>");
-  const t = c.training;
+  const t = c.training, tt = c.tablesTraining;
   return '<div class="inline"><div class="field" style="flex:0 1 170px"><label>Rok narození</label><select data-birth data-f="' + F.id + '" data-c="' + c.id + '">' + opts.join("") + "</select></div>" +
     '<span class="pill">' + (c.grade ? c.grade + ". třída · počítání" : "Bez roku narození se počítání nespustí") + "</span>" +
-    (c.grade ? '<span class="pill">Trénink dnes: ' + t.sessionsToday + " sad, " + t.minutesToday + "/" + F.g.limits.trainCap + " min" + (t.totalToday ? ", " + t.correctToday + "/" + t.totalToday + " správně" : "") + "</span>" : "") + "</div>";
+    (c.grade && t.sessionsToday ? '<span class="pill">Počítání dnes: ' + t.sessionsToday + " sad, " + t.minutesToday + "/" + F.g.limits.trainCap + " min" + (t.totalToday ? ", " + t.correctToday + "/" + t.totalToday + " správně" : "") + "</span>" : "") +
+    (tt.sessionsToday ? '<span class="pill">Násobilka dnes: ' + tt.sessionsToday + " sad, " + tt.minutesToday + " min" + (tt.totalToday ? ", " + tt.correctToday + "/" + tt.totalToday + " správně" : "") + "</span>" : "") + "</div>";
 }
 
 const HIST = {}; // id rodiny -> { days, data, loading }
